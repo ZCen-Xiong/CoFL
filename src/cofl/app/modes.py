@@ -26,6 +26,10 @@ class StudioMode:
 def builtin_domains():
     return [
         DomainDescriptor(
+            id="coflm", title="CoFL-M", description="Depth-only XOY navigation and coupled-shape teacher",
+            methods=["cofl-m"], profiles=["cofl_m_configuration_v1"], resource_kinds=[],
+        ),
+        DomainDescriptor(
             id="bev",
             title="BEV",
             description="Bird's-eye image fields with CoFL",
@@ -45,6 +49,12 @@ def builtin_domains():
 
 def builtin_modes():
     return [
+        StudioMode(ModeDescriptor(
+            id="coflm-playground", domain_id="coflm", task="playground", execution="static",
+            title="CoFL-M Playground", renderer="coflm",
+            description="First-person depth, validated docking points and configuration-space teacher.",
+            capabilities=["depth", "docking", "configuration_teacher"],
+        )),
         StudioMode(
             ModeDescriptor(
                 id="scene",

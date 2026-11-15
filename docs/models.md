@@ -4,6 +4,10 @@ CoFL and CoFL-S predict continuous fields by multiplying a normalized direction
 by a nonnegative magnitude. They share an observation encoder and use distinct
 query decoders.
 
+For the separate depth-only DFormer experiment with coordinate goals, see
+[CoFL-M depth pipeline](cofl-m-depth-dformer-pipeline.md). The contracts below
+describe the published RGB/language policies.
+
 | Contract | CoFL | CoFL-S |
 | --- | --- | --- |
 | Observation | BEV RGB and instruction | One egocentric RGB-D frame and instruction |

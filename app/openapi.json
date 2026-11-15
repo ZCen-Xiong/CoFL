@@ -1450,6 +1450,277 @@
           }
         }
       }
+    },
+    "/api/v1/coflm/scenes": {
+      "get": {
+        "tags": [
+          "CoFL-M"
+        ],
+        "summary": "Scenes",
+        "operationId": "scenes_api_v1_coflm_scenes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MSceneSummary"
+                  },
+                  "type": "array",
+                  "title": "Response Scenes Api V1 Coflm Scenes Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coflm/scenes/{scene_id}": {
+      "get": {
+        "tags": [
+          "CoFL-M"
+        ],
+        "summary": "Scene",
+        "operationId": "scene_api_v1_coflm_scenes__scene_id__get",
+        "parameters": [
+          {
+            "name": "scene_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Scene Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MScene"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coflm/validate": {
+      "post": {
+        "tags": [
+          "CoFL-M"
+        ],
+        "summary": "Validate",
+        "operationId": "validate_api_v1_coflm_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MPointRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MDock"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coflm/sample": {
+      "post": {
+        "tags": [
+          "CoFL-M"
+        ],
+        "summary": "Sample",
+        "operationId": "sample_api_v1_coflm_sample_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MRandomRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MPair"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coflm/teacher": {
+      "post": {
+        "tags": [
+          "CoFL-M"
+        ],
+        "summary": "Teacher",
+        "operationId": "teacher_api_v1_coflm_teacher_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MTeacher"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coflm/observation": {
+      "post": {
+        "tags": [
+          "CoFL-M"
+        ],
+        "summary": "Observation",
+        "operationId": "observation_api_v1_coflm_observation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MObservationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MObservation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/coflm/tasks/{artifact_id}/teacher": {
+      "get": {
+        "tags": [
+          "CoFL-M"
+        ],
+        "summary": "Download",
+        "operationId": "download_api_v1_coflm_tasks__artifact_id__teacher_get",
+        "parameters": [
+          {
+            "name": "artifact_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Artifact Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1981,6 +2252,519 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "MDock": {
+        "properties": {
+          "point": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Point"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "clearance_m": {
+            "type": "number",
+            "title": "Clearance M"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "point",
+          "valid",
+          "clearance_m",
+          "reason"
+        ],
+        "title": "MDock"
+      },
+      "MFieldSlice": {
+        "properties": {
+          "q_m": {
+            "type": "number",
+            "title": "Q M"
+          },
+          "arrows": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 5,
+              "minItems": 5
+            },
+            "type": "array",
+            "title": "Arrows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "q_m",
+          "arrows"
+        ],
+        "title": "MFieldSlice"
+      },
+      "MObservation": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "title": "Image"
+          },
+          "position": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Position"
+          },
+          "q_m": {
+            "type": "number",
+            "title": "Q M"
+          },
+          "heading_deg": {
+            "type": "number",
+            "title": "Heading Deg",
+            "default": 0
+          },
+          "valid_fraction": {
+            "type": "number",
+            "title": "Valid Fraction"
+          },
+          "far_m": {
+            "type": "number",
+            "title": "Far M"
+          },
+          "source": {
+            "type": "string",
+            "const": "habitat_depth",
+            "title": "Source",
+            "default": "habitat_depth"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "image",
+          "position",
+          "q_m",
+          "valid_fraction",
+          "far_m"
+        ],
+        "title": "MObservation"
+      },
+      "MObservationRequest": {
+        "properties": {
+          "scene_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+            "title": "Scene Id"
+          },
+          "point": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Point"
+          },
+          "q_m": {
+            "type": "number",
+            "maximum": 0.1,
+            "minimum": -0.1,
+            "title": "Q M",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scene_id",
+          "point"
+        ],
+        "title": "MObservationRequest"
+      },
+      "MObstacle": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "circle",
+              "box"
+            ],
+            "title": "Kind"
+          },
+          "center": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Center"
+          },
+          "radius": {
+            "type": "number",
+            "title": "Radius",
+            "default": 0
+          },
+          "size": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Size",
+            "default": [
+              0,
+              0
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "center"
+        ],
+        "title": "MObstacle"
+      },
+      "MPair": {
+        "properties": {
+          "start": {
+            "$ref": "#/components/schemas/MDock"
+          },
+          "goal": {
+            "$ref": "#/components/schemas/MDock"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start",
+          "goal"
+        ],
+        "title": "MPair"
+      },
+      "MPointRequest": {
+        "properties": {
+          "scene_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+            "title": "Scene Id"
+          },
+          "point": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Point"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scene_id",
+          "point"
+        ],
+        "title": "MPointRequest"
+      },
+      "MRandomRequest": {
+        "properties": {
+          "scene_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+            "title": "Scene Id"
+          },
+          "seed": {
+            "type": "integer",
+            "maximum": 4294967295.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scene_id"
+        ],
+        "title": "MRandomRequest"
+      },
+      "MScene": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "length_m": {
+            "type": "number",
+            "title": "Length M"
+          },
+          "width_m": {
+            "type": "number",
+            "title": "Width M"
+          },
+          "height_m": {
+            "type": "number",
+            "title": "Height M"
+          },
+          "resolution_m": {
+            "type": "number",
+            "title": "Resolution M"
+          },
+          "obstacles": {
+            "items": {
+              "$ref": "#/components/schemas/MObstacle"
+            },
+            "type": "array",
+            "title": "Obstacles"
+          },
+          "docking": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "items": {
+                    "type": "number"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Docking"
+          },
+          "habitat_available": {
+            "type": "boolean",
+            "title": "Habitat Available"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "length_m",
+          "width_m",
+          "height_m",
+          "resolution_m",
+          "obstacles",
+          "docking",
+          "habitat_available"
+        ],
+        "title": "MScene"
+      },
+      "MSceneSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "MSceneSummary"
+      },
+      "MTaskRequest": {
+        "properties": {
+          "scene_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+            "title": "Scene Id"
+          },
+          "start": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Start"
+          },
+          "goal": {
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 2,
+            "title": "Goal"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scene_id",
+          "start",
+          "goal"
+        ],
+        "title": "MTaskRequest"
+      },
+      "MTeacher": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "const": "geometry_teacher",
+            "title": "Source",
+            "default": "geometry_teacher"
+          },
+          "reachable": {
+            "type": "boolean",
+            "title": "Reachable"
+          },
+          "resolution_m": {
+            "type": "number",
+            "title": "Resolution M"
+          },
+          "path": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 3,
+              "minItems": 3
+            },
+            "type": "array",
+            "title": "Path"
+          },
+          "slices": {
+            "items": {
+              "$ref": "#/components/schemas/MFieldSlice"
+            },
+            "type": "array",
+            "title": "Slices"
+          },
+          "min_path_clearance_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Path Clearance M"
+          },
+          "artifact_id": {
+            "type": "string",
+            "title": "Artifact Id"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reachable",
+          "resolution_m",
+          "path",
+          "slices",
+          "min_path_clearance_m",
+          "artifact_id",
+          "message"
+        ],
+        "title": "MTeacher"
       },
       "ModeDescriptor": {
         "properties": {

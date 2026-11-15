@@ -37,12 +37,19 @@ class StudioConfig(Contract):
     datasets: dict[ResourceId, DatasetResource] = Field(default_factory=dict)
     scenes: dict[ResourceId, SceneResource] = Field(default_factory=dict)
     benchmarks: dict[ResourceId, FileResource] = Field(default_factory=dict)
+    coflm_habitat_python: Path | None = None
+    coflm_output: Path | None = None
 
     def resolve(self, base_dir: Path):
         config = self.model_copy(deep=True)
         for resources in (config.models, config.datasets, config.scenes, config.benchmarks):
             for resource in resources.values():
                 resource.path = (base_dir / resource.path.expanduser()).resolve()
+        for name in ("coflm_habitat_python", "coflm_output"):
+            value = getattr(config, name)
+            if value is not None:
+                # Preserve virtualenv interpreter symlinks.
+                setattr(config, name, (base_dir / value.expanduser()).absolute())
         return config
 
 

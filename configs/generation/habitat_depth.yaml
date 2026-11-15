@@ -1,0 +1,14 @@
+# Habitat lives separately from the Python 3.12 / PyTorch model environment.
+# conda env create --prefix .habitat/coflm -f configs/generation/habitat_depth.yaml
+name: coflm-habitat
+channels:
+  - conda-forge
+  - aihabitat
+dependencies:
+  - python=3.9.23
+  - habitat-sim=0.3.3
+  - headless
+  - numpy=1.26.4
+  - numba=0.60.0
+  - scipy=1.13.1
+  - matplotlib=3.3.2

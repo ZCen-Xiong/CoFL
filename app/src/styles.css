@@ -1027,3 +1027,125 @@ h1 {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* CoFL-M owns depth, docking and teacher contracts; no language/policy controls. */
+.coflm-workspace {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  align-items: start;
+}
+.coflm-controls {
+  border-right: 1px solid #dce4da;
+  align-self: stretch;
+  background: #fafbf7;
+}
+.coflm-controls .control-section {
+  padding: 24px 20px;
+}
+.coflm-controls .rt-Button {
+  white-space: normal;
+  height: auto;
+  min-height: 34px;
+  padding: 7px 10px;
+}
+.coflm-dock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 18px;
+  font-size: 13px;
+}
+.coflm-dock strong,
+.coflm-dock small {
+  width: 100%;
+}
+.coflm-dock small {
+  color: #60716b;
+}
+.coflm-main {
+  padding: 24px;
+  min-width: 0;
+  display: grid;
+  gap: 20px;
+}
+.coflm-observations {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 20px;
+}
+.coflm-panel {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #d8e1d6;
+  background: #fffefa;
+  border-radius: 12px;
+}
+.coflm-panel .section-label {
+  padding: 0;
+  margin-bottom: 16px;
+}
+.coflm-depth {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: #172b28;
+  border-radius: 6px;
+  image-rendering: auto;
+}
+.coflm-placeholder {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4/3;
+  background: #eaf0e9;
+  border-radius: 6px;
+  color: #657a6f;
+}
+.coflm-sector {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4/3;
+}
+.coflm-map {
+  width: 100%;
+  max-height: 550px;
+  display: block;
+  cursor: crosshair;
+  border: 1px solid #d5ded2;
+  border-radius: 5px;
+}
+.coflm-panel label {
+  display: block;
+  font-size: 13px;
+  color: #54695f;
+  margin-top: 16px;
+}
+.coflm-panel input[type="range"] {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  accent-color: #277b6a;
+}
+@media (max-width: 1150px) {
+  .coflm-workspace {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+  .coflm-main {
+    padding: 16px;
+  }
+  .coflm-observations {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 800px) {
+  .coflm-workspace {
+    display: block;
+  }
+  .coflm-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+  .coflm-main {
+    padding: 12px;
+  }
+}

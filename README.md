@@ -275,6 +275,11 @@ See [rendering](docs/rendering.md) for upstream scene assets and
 [generation](docs/generation.md) for recipes and the limits of historical
 dataset reproduction.
 
+For full-height vertical poles and walls with surface gaps above 0.65m,
+see the [CoFL-M depth-only Habitat scene generator](docs/cofl-m-obstacle-scenes.md).
+An experimental [depth-only DFormer pipeline](docs/cofl-m-depth-dformer-pipeline.md)
+connects generated Habitat depth to goal-conditioned CoFL-S field queries.
+
 CoFL evaluation includes batched image-field and image goal/trajectory/collision
 scoring. CoFL-S evaluation uses the closed-loop Habitat/VLN runner on the
 R2R-1200 and RxR-1600 selected subsets. See the

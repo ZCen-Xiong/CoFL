@@ -118,6 +118,23 @@ def create_app(
     app.state.device_manager = device_manager
     app.state.shutdown = shutdown
     app.add_middleware(ShutdownMiddleware, controller=shutdown)
+
+    @app.middleware("http")
+    async def fresh_frontend_entry(request: Request, call_next):
+        # A cached HTML entry can load an old hashed JS bundle against a new
+        # mode catalog, yielding "Renderer not installed". Always return the
+        # current entry; keep normal caching for fingerprinted JS/CSS assets.
+        entry = request.method in ("GET", "HEAD") and request.url.path in ("/", "/index.html")
+        if entry:
+            request.scope["headers"] = [
+                (key, value) for key, value in request.scope["headers"]
+                if key.lower() not in (b"if-none-match", b"if-modified-since")
+            ]
+        response = await call_next(request)
+        if entry:
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     app.state.domains = domain_map
     app.state.modes = {key: mode.descriptor for key, mode in mode_map.items()}
     execution_gate = asyncio.Lock()
@@ -499,6 +516,11 @@ def create_app(
             return await run_in_threadpool(online.create, payload)
 
     app.include_router(create_online_router(online, session_creator=create_online_session))
+    from .coflm import CoFLMService, create_router as create_coflm_router
+
+    coflm = CoFLMService(config)
+    app.state.coflm = coflm
+    app.include_router(create_coflm_router(coflm, require_open, lambda: online.is_running))
     app.include_router(
         create_online_router(
             online,

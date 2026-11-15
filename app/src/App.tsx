@@ -298,7 +298,7 @@ function StudioWorkspace({ onShutdown }: { onShutdown: () => void }) {
                 : "Explore the world from above or from the robot's point of view."}
             </p>
           </div>
-          {domain && (
+          {domain && (domain.resource_kinds ?? ["model", "dataset"]).includes("model") && (
             <Flex gap="3" align="center" wrap="wrap">
               <div className="model-select">
                 <Text size="1" color="gray">
@@ -449,7 +449,7 @@ function StudioWorkspace({ onShutdown }: { onShutdown: () => void }) {
           </>
         )}
       </div>
-      {domain && (
+      {domain && (domain.resource_kinds ?? ["model", "dataset"]).includes("model") && (
         <ResourcePicker
           kind={resourceKind}
           domain={domain}

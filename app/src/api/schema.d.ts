@@ -345,6 +345,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/coflm/scenes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scenes */
+        get: operations["scenes_api_v1_coflm_scenes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coflm/scenes/{scene_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scene */
+        get: operations["scene_api_v1_coflm_scenes__scene_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coflm/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate */
+        post: operations["validate_api_v1_coflm_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coflm/sample": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sample */
+        post: operations["sample_api_v1_coflm_sample_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coflm/teacher": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Teacher */
+        post: operations["teacher_api_v1_coflm_teacher_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coflm/observation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Observation */
+        post: operations["observation_api_v1_coflm_observation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/coflm/tasks/{artifact_id}/teacher": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download */
+        get: operations["download_api_v1_coflm_tasks__artifact_id__teacher_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -528,6 +647,202 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** MDock */
+        MDock: {
+            /** Point */
+            point: [
+                number,
+                number
+            ];
+            /** Valid */
+            valid: boolean;
+            /** Clearance M */
+            clearance_m: number;
+            /** Reason */
+            reason: string;
+        };
+        /** MFieldSlice */
+        MFieldSlice: {
+            /** Q M */
+            q_m: number;
+            /** Arrows */
+            arrows: [
+                number,
+                number,
+                number,
+                number,
+                number
+            ][];
+        };
+        /** MObservation */
+        MObservation: {
+            /** Image */
+            image: string;
+            /** Position */
+            position: [
+                number,
+                number,
+                number
+            ];
+            /** Q M */
+            q_m: number;
+            /**
+             * Heading Deg
+             * @default 0
+             */
+            heading_deg?: number;
+            /** Valid Fraction */
+            valid_fraction: number;
+            /** Far M */
+            far_m: number;
+            /**
+             * Source
+             * @default habitat_depth
+             * @constant
+             */
+            source?: "habitat_depth";
+        };
+        /** MObservationRequest */
+        MObservationRequest: {
+            /** Scene Id */
+            scene_id: string;
+            /** Point */
+            point: [
+                number,
+                number
+            ];
+            /**
+             * Q M
+             * @default 0
+             */
+            q_m?: number;
+        };
+        /** MObstacle */
+        MObstacle: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "circle" | "box";
+            /** Center */
+            center: [
+                number,
+                number
+            ];
+            /**
+             * Radius
+             * @default 0
+             */
+            radius?: number;
+            /**
+             * Size
+             * @default [
+             *       0,
+             *       0
+             *     ]
+             */
+            size?: [
+                number,
+                number
+            ];
+        };
+        /** MPair */
+        MPair: {
+            start: components["schemas"]["MDock"];
+            goal: components["schemas"]["MDock"];
+        };
+        /** MPointRequest */
+        MPointRequest: {
+            /** Scene Id */
+            scene_id: string;
+            /** Point */
+            point: [
+                number,
+                number
+            ];
+        };
+        /** MRandomRequest */
+        MRandomRequest: {
+            /** Scene Id */
+            scene_id: string;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed?: number;
+        };
+        /** MScene */
+        MScene: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Length M */
+            length_m: number;
+            /** Width M */
+            width_m: number;
+            /** Height M */
+            height_m: number;
+            /** Resolution M */
+            resolution_m: number;
+            /** Obstacles */
+            obstacles: components["schemas"]["MObstacle"][];
+            /** Docking */
+            docking: {
+                [key: string]: number | number[] | string;
+            };
+            /** Habitat Available */
+            habitat_available: boolean;
+        };
+        /** MSceneSummary */
+        MSceneSummary: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        };
+        /** MTaskRequest */
+        MTaskRequest: {
+            /** Scene Id */
+            scene_id: string;
+            /** Start */
+            start: [
+                number,
+                number
+            ];
+            /** Goal */
+            goal: [
+                number,
+                number
+            ];
+        };
+        /** MTeacher */
+        MTeacher: {
+            /**
+             * Source
+             * @default geometry_teacher
+             * @constant
+             */
+            source?: "geometry_teacher";
+            /** Reachable */
+            reachable: boolean;
+            /** Resolution M */
+            resolution_m: number;
+            /** Path */
+            path: [
+                number,
+                number,
+                number
+            ][];
+            /** Slices */
+            slices: components["schemas"]["MFieldSlice"][];
+            /** Min Path Clearance M */
+            min_path_clearance_m: number | null;
+            /** Artifact Id */
+            artifact_id: string;
+            /** Message */
+            message: string;
         };
         /** ModeDescriptor */
         ModeDescriptor: {
@@ -2300,6 +2615,220 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OnlineSession"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scenes_api_v1_coflm_scenes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MSceneSummary"][];
+                };
+            };
+        };
+    };
+    scene_api_v1_coflm_scenes__scene_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MScene"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_api_v1_coflm_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MPointRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MDock"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sample_api_v1_coflm_sample_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MRandomRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MPair"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    teacher_api_v1_coflm_teacher_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MTeacher"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    observation_api_v1_coflm_observation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MObservationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MObservation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_api_v1_coflm_tasks__artifact_id__teacher_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
