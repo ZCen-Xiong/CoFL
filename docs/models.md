@@ -5,7 +5,7 @@ by a nonnegative magnitude. They share an observation encoder and use distinct
 query decoders.
 
 For the separate depth-only DFormer experiment with coordinate goals, see
-[CoFL-M depth pipeline](cofl-m-depth-dformer-pipeline.md). The contracts below
+[cof-m depth pipeline](development-notes.md#depth-pipeline). The contracts below
 describe the published RGB/language policies.
 
 | Contract | CoFL | CoFL-S |

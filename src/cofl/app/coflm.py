@@ -1,4 +1,4 @@
-"""Depth-only CoFL-M tasks: docking, exact-scene teacher, and Habitat observations."""
+"""Depth-only cof-m tasks: docking, exact-scene teacher, and Habitat observations."""
 
 from __future__ import annotations
 
@@ -133,7 +133,7 @@ class CoFLMService:
         manifest = resource.path.parent / "scene.json"
         metadata = json.loads(manifest.read_text())
         if metadata.get("geometry_profile") != "vertical_extrusion_xy_v1":
-            raise ValueError("Select a generated vertical-extrusion CoFL-M scene")
+            raise ValueError("Select a generated vertical-extrusion cof-m scene")
         cfg = obstacle_scene.SceneConfig(**metadata["config"])
         cfg.validate()
         obstacle_scene.audit_obstacles(cfg, metadata["obstacles"])
@@ -311,7 +311,7 @@ class CoFLMService:
 
 
 def create_router(service, require_open, online_running):
-    router = APIRouter(prefix="/api/v1/coflm", tags=["CoFL-M"])
+    router = APIRouter(prefix="/api/v1/coflm", tags=["cof-m"])
 
     async def execute(request, method, *args):
         require_same_origin(request)
@@ -325,7 +325,7 @@ def create_router(service, require_open, online_running):
         except (RuntimeError, OSError) as error:
             raise HTTPException(503, str(error)) from error
         except ImportError as error:
-            raise HTTPException(503, "CoFL-M teacher requires the generation extra (SciPy): " + str(error)) from error
+            raise HTTPException(503, "cof-m teacher requires the generation extra (SciPy): " + str(error)) from error
 
     @router.get("/scenes", response_model=list[MSceneSummary])
     async def scenes(request: Request):
@@ -350,7 +350,7 @@ def create_router(service, require_open, online_running):
     @router.post("/observation", response_model=MObservation)
     async def observation(body: MObservationRequest, request: Request):
         if online_running():
-            raise HTTPException(409, "End the active CoFL-S session before opening CoFL-M Habitat")
+            raise HTTPException(409, "End the active CoFL-S session before opening cof-m Habitat")
         return await execute(request, service.observation, body)
 
     @router.get("/tasks/{artifact_id}/teacher")

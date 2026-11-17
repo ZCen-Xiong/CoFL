@@ -266,6 +266,7 @@ def create_app(
                     "floors": value.floors,
                 }
                 for key, value in config.scenes.items()
+                if value.domain_id in (None, "bev")
             ],
             benchmarks=[
                 {

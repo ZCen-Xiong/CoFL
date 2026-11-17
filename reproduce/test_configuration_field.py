@@ -11,9 +11,9 @@ from cofl.generation.configuration_field import (
 
 def test_shape_envelope_and_coupling():
     robot = CoupledCrossProxy()
-    np.testing.assert_allclose(2*robot.half_extents(0), [0.77, 0.80])
-    np.testing.assert_allclose(2*robot.half_extents(0.1), [0.97, 0.60])
-    np.testing.assert_allclose(2*robot.half_extents(-0.1), [0.57, 1.00])
+    np.testing.assert_allclose(2*robot.half_extents(0), [0.80, 0.80])
+    np.testing.assert_allclose(2*robot.half_extents(0.1), [1.00, 0.60])
+    np.testing.assert_allclose(2*robot.half_extents(-0.1), [0.60, 1.00])
     assert np.all(robot.half_extents(0, np.pi/4) + robot.margin < 0.325)
 
 

@@ -1028,7 +1028,7 @@ h1 {
   }
 }
 
-/* CoFL-M owns depth, docking and teacher contracts; no language/policy controls. */
+/* cof-m owns depth, docking and teacher contracts; no language/policy controls. */
 .coflm-workspace {
   display: grid;
   grid-template-columns: 290px minmax(0, 1fr);

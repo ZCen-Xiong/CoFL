@@ -1454,7 +1454,7 @@
     "/api/v1/coflm/scenes": {
       "get": {
         "tags": [
-          "CoFL-M"
+          "cof-m"
         ],
         "summary": "Scenes",
         "operationId": "scenes_api_v1_coflm_scenes_get",
@@ -1479,7 +1479,7 @@
     "/api/v1/coflm/scenes/{scene_id}": {
       "get": {
         "tags": [
-          "CoFL-M"
+          "cof-m"
         ],
         "summary": "Scene",
         "operationId": "scene_api_v1_coflm_scenes__scene_id__get",
@@ -1521,7 +1521,7 @@
     "/api/v1/coflm/validate": {
       "post": {
         "tags": [
-          "CoFL-M"
+          "cof-m"
         ],
         "summary": "Validate",
         "operationId": "validate_api_v1_coflm_validate_post",
@@ -1562,7 +1562,7 @@
     "/api/v1/coflm/sample": {
       "post": {
         "tags": [
-          "CoFL-M"
+          "cof-m"
         ],
         "summary": "Sample",
         "operationId": "sample_api_v1_coflm_sample_post",
@@ -1603,7 +1603,7 @@
     "/api/v1/coflm/teacher": {
       "post": {
         "tags": [
-          "CoFL-M"
+          "cof-m"
         ],
         "summary": "Teacher",
         "operationId": "teacher_api_v1_coflm_teacher_post",
@@ -1644,7 +1644,7 @@
     "/api/v1/coflm/observation": {
       "post": {
         "tags": [
-          "CoFL-M"
+          "cof-m"
         ],
         "summary": "Observation",
         "operationId": "observation_api_v1_coflm_observation_post",
@@ -1685,7 +1685,7 @@
     "/api/v1/coflm/tasks/{artifact_id}/teacher": {
       "get": {
         "tags": [
-          "CoFL-M"
+          "cof-m"
         ],
         "summary": "Download",
         "operationId": "download_api_v1_coflm_tasks__artifact_id__teacher_get",

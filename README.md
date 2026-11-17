@@ -276,8 +276,8 @@ See [rendering](docs/rendering.md) for upstream scene assets and
 dataset reproduction.
 
 For full-height vertical poles and walls with surface gaps above 0.65m,
-see the [CoFL-M depth-only Habitat scene generator](docs/cofl-m-obstacle-scenes.md).
-An experimental [depth-only DFormer pipeline](docs/cofl-m-depth-dformer-pipeline.md)
+see the [cof-m depth-only Habitat scene generator](docs/cof-m-obstacle-scenes.md).
+An experimental [depth-only DFormer pipeline](docs/development-notes.md#depth-pipeline)
 connects generated Habitat depth to goal-conditioned CoFL-S field queries.
 
 CoFL evaluation includes batched image-field and image goal/trajectory/collision
@@ -291,6 +291,9 @@ external assets and the limits of paper reproduction.
 
 ## Documentation
 
+- [cof-m Studio](docs/cof-m-studio.md): depth-only tasks, docking points and teacher visualization.
+- [cof-m scene generation](docs/cof-m-obstacle-scenes.md): vertical obstacles and Habitat depth capture.
+- [Development and experiment notes](docs/development-notes.md): consolidated discussion context and historical experiment records.
 - [Models](docs/models.md): encoder, decoders, depth and action prediction.
 - [Inference rules](docs/inference.md): shared grid, time schedule, boundary projection and camera conditioning.
 - [Dataset format](docs/dataset-format.md): observations, annotations, geometry and storage.

@@ -1,4 +1,4 @@
-"""Build a small scene-disjoint CoFL-M Habitat observation set and Studio catalog.
+"""Build a small scene-disjoint cof-m Habitat observation set and Studio catalog.
 
 This is scene/observation preparation, not a supervised CoFLDataset release.
 """
@@ -44,7 +44,7 @@ def build(output: Path, habitat_python: Path, *, frames=16):
         scenes.append(entry)
         catalog["scenes"][scene_id] = dict(
             path=(relative / "obstacles.glb").as_posix(),
-            label=f"CoFL-M {split} / {kind} / seed {seed}", up_axis="y",
+            label=f"cof-m {split} / {kind} / seed {seed}", domain_id="coflm", up_axis="y",
             floors=[dict(id="fixed-xy", label="XOY z=1.2m (obstacle cutaway)",
                          elevation=0, min_height=-0.2, max_height=1.5)],
         )
@@ -84,7 +84,7 @@ def build(output: Path, habitat_python: Path, *, frames=16):
     manifest.update(status="complete", total_frames=sum(s["frames"] for s in scenes))
     obstacle_scene.save_json(output / "manifest.json", manifest)
     (output / "README.md").write_text(
-        "# CoFL-M Habitat scene/observation set\n\n"
+        "# cof-m Habitat scene/observation set\n\n"
         "4 train scenes, 2 val scenes; split by scene, no shared seeds. "
         "Full-height vertical obstacles; fixed planning height z=1.2m.\n\n"
         "Contains GLB, metric depth, valid masks and poses. "
@@ -92,7 +92,7 @@ def build(output: Path, habitat_python: Path, *, frames=16):
         "Open the existing CoFL Studio with:\n\n```bash\n"
         f".venv/bin/python -m cofl app --config {output / 'studio.yaml'} "
         "--no-browser --port 8788\n```\n\n"
-        "Visit http://127.0.0.1:8788, choose CoFL-M → CoFL-M Playground, "
+        "Visit http://127.0.0.1:8788, choose cof-m → cof-m Playground, "
         "then choose a scene. The new mode validates docking points and generates a teacher; "
         "teacher artifacts are separate from this observation set.\n",
         encoding="utf-8",

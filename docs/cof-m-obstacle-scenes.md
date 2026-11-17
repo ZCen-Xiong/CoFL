@@ -1,10 +1,10 @@
-# CoFL-M: 简单障碍场景与深度采集
+# cof-m: 简单障碍场景与深度采集
 
-入口为 `src/cofl/generation/obstacle_scene.py`。当前 CoFL-M 只做固定高度的 **XOY 平面规划**。场景只生成全高垂直圆柱和垂直矩形墙面，取消圆环；所有障碍在 `0 < z < height` 的水平截面相同。地板位于 z=0 以下，不参与障碍间距检查。全部几何是显式三角网格，Habitat 只创建深度相机，不创建 RGB/语义相机。
+入口为 `src/cofl/generation/obstacle_scene.py`。当前 cof-m 只做固定高度的 **XOY 平面规划**。场景只生成全高垂直圆柱和垂直矩形墙面，取消圆环；所有障碍在 `0 < z < height` 的水平截面相同。地板位于 z=0 以下，不参与障碍间距检查。全部几何是显式三角网格，Habitat 只创建深度相机，不创建 RGB/语义相机。
 
 2026-11-14 已更新生成规则。已有旧场景文件不自动改变，应使用新目录重新生成。默认 45 根柱子，不生成墙；墙面和带缝墙均可选。
 
-这是场景与观测生成工具，尚不是 `CoFLDataset`，不生成流场标签、不运行无人机动力学。现在可接入实验性的单通道 DFormer 编码与 CoFL-S decoder，见 [深度 DFormer pipeline 技术说明](cofl-m-depth-dformer-pipeline.md)。该适配显式修改原 RGB-D encoder 的输入 stem，首次验证使用随机初始化权重。
+这是场景与观测生成工具，尚不是 `CoFLDataset`，不生成流场标签、不运行无人机动力学。现在可接入实验性的单通道 DFormer 编码与 CoFL-S decoder，见 [深度 DFormer pipeline 技术说明](development-notes.md#depth-pipeline)。该适配显式修改原 RGB-D encoder 的输入 stem，首次验证使用随机初始化权重。
 
 ## 只生成场景：使用现有项目环境
 
@@ -104,7 +104,7 @@ preview/000000.png              # 16-bit 灰度预览，非训练用的原始深
 
 ## 当前验证
 
-![固定高度 XOY 场景俯视图](assets/cofl-m-vertical-xy-scenes.png)
+![固定高度 XOY 场景俯视图](assets/cof-m-vertical-xy-scenes.png)
 
 12 个种子的默认柱林、柱墙混合、纯墙面、距离定义、全高网格、禁用圆环及拥挤场景失败行为均有测试：
 
@@ -117,4 +117,4 @@ preview/000000.png              # 16-bit 灰度预览，非训练用的原始深
 
 新柱林的 Habitat + DFormer 实验输出在 `artifacts/cofl-m/vertical-xy-depth-smoke/`，其生成规则与之前含圆环的实验不同；旧实验报告保留历史实测数据。
 
-2026-11-15 已生成按场景划分的 6 场景 / 96 帧预览集，并复用已有 CoFL Studio 展示，见 [Habitat 场景集与可视化说明](cofl-m-habitat-preview.md)。
+2026-11-15 已生成按场景划分的 6 场景 / 96 帧预览集，并复用已有 CoFL Studio 展示，见 [Habitat 场景集与可视化说明](development-notes.md#habitat-preview)。

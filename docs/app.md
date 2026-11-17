@@ -1,14 +1,14 @@
 # CoFL Studio
 
-Studio opens with **CoFL-M**, **BEV** and **2D egocentric** entries. Each domain owns
+Studio opens with **cof-m**, **BEV** and **2D egocentric** entries. Each domain owns
 its compatible resources and tasks:
 
-An independent **CoFL-M** entry now supports depth-only XOY tasks, validated
-docking points and a geometry teacher. See the [CoFL-M and CoFL-S walkthrough](cofl-m-studio.md).
+An independent **cof-m** entry now supports depth-only XOY tasks, validated
+docking points and a geometry teacher. See the [cof-m and CoFL-S walkthrough](cof-m-studio.md).
 
 | Domain | Method / profile | Tasks |
 | --- | --- | --- |
-| CoFL-M (`coflm`) | Depth-only XOY / `cofl_m_configuration_v1` | **CoFL-M Playground**: validated docking, first-person Habitat depth and configuration teacher |
+| cof-m (`coflm`) | Depth-only XOY / `cofl_m_configuration_v1` | **cof-m Playground**: validated docking, first-person Habitat depth and configuration teacher |
 | BEV (`bev`) | CoFL / `image_field_v1` | **Scene Playground** (`scene`): GLB camera views and field trajectories; **Val Inspector** (`validation`): native image-field samples and predictions |
 | 2D egocentric (`ego2d`) | CoFL-S / `ground_sector_v1` | **Interactive Playground** (`ego2d-interactive`): explore a real Habitat scene with live commands; **VLN Benchmark** (`ego2d-playground`): fixed episodes with oracle instruction progress and metrics |
 

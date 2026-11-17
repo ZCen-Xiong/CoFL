@@ -49,12 +49,12 @@ class PlanarWorld:
 
 @dataclass(frozen=True)
 class CoupledCrossProxy:
-    # The two outer widths at q=0 are 0.77m and 0.80m. These capsule
-    # thicknesses approximate the recorded envelope, not measured CAD shapes.
+    # Outer spans are 0.80 +/- 2q metres, with constant 0.20m width.
+    # Capsule centerline lengths exclude the two 0.10m end caps.
     e0: float = 0.30
-    horizontal_radius: float = 0.085
+    horizontal_radius: float = 0.10
     vertical_radius: float = 0.10
-    body_radius: float = 0.12
+    body_radius: float = 0.10
     q_limit: float = 0.10
     margin: float = 0.01
 

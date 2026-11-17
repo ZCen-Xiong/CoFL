@@ -205,7 +205,7 @@ def obstacle_mesh(obstacle):
 
 def write_glb(path: Path, obstacles):
     """Write a portable self-contained glTF 2 binary, without mesh dependencies."""
-    document = dict(asset={"version": "2.0", "generator": "cofl-m obstacle scene"},
+    document = dict(asset={"version": "2.0", "generator": "cof-m obstacle scene"},
                     scene=0, scenes=[{"nodes": []}], nodes=[], meshes=[],
                     materials=[{"doubleSided": True, "pbrMetallicRoughness": {
                         "baseColorFactor": [0.6, 0.6, 0.6, 1],

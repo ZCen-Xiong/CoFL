@@ -27,9 +27,9 @@ function Cross({
   const ey = allShapes ? 0.4 : 0.3 - q;
   return (
     <g stroke={color} strokeLinecap="round" opacity={allShapes ? 0.65 : 1}>
-      <line x1={x - ex} x2={x + ex} y1={y} y2={y} strokeWidth={0.17} />
+      <line x1={x - ex} x2={x + ex} y1={y} y2={y} strokeWidth={0.2} />
       <line x1={x} x2={x} y1={y - ey} y2={y + ey} strokeWidth={0.2} />
-      <circle cx={x} cy={y} r={0.12} fill={color} stroke="none" />
+      <circle cx={x} cy={y} r={0.10} fill={color} stroke="none" />
     </g>
   );
 }
@@ -211,10 +211,10 @@ export function CoFLMPlayground() {
     <main className="coflm-workspace">
       <aside className="coflm-controls">
         <div className="control-section">
-          <div className="section-label">COFL-M · DEPTH ONLY</div>
+          <div className="section-label">cof-m · DEPTH ONLY</div>
           <Select.Root value={sceneId} onValueChange={setSceneId}>
             <Select.Trigger
-              aria-label="CoFL-M scene"
+              aria-label="cof-m scene"
               placeholder="选择场景"
               className="full-width"
             />
@@ -228,7 +228,7 @@ export function CoFLMPlayground() {
           </Select.Root>
           {!scenes.length && (
             <Text as="p" size="2">
-              请使用含 CoFL-M 场景的 studio.yaml 启动。
+              请使用含 cof-m 场景的 studio.yaml 启动。
             </Text>
           )}
           <Text as="p" size="2">
@@ -302,8 +302,9 @@ export function CoFLMPlayground() {
             全部 q∈[−0.10,+0.10]m 的十字包络：
           </Text>
           <Text as="p" size="2">
-            横向总跨距 97cm，纵向总跨距 100cm；面宽 17/20cm，另留 1cm
-            裕度。两条中心线各长 80cm。
+            初始横纵外轮廓各长 80cm，面宽恒定 20cm。横长 80+200q cm，纵长
+            80−200q cm（q 单位为米），各在 60–100cm 内对称伸缩，总长恒为 160cm。
+            停泊位置检查全部形态的并集：横纵各跨 100cm，另留 1cm 裕度。
           </Text>
           <Text as="p" size="2">
             检查整块胶囊十字与障碍及规划边界。保证代理模型的全部伸缩形态，不包含任意旋转姿态。
@@ -380,7 +381,7 @@ export function CoFLMPlayground() {
             <svg
               className="coflm-sector"
               viewBox="-5 -5.2 10 5.7"
-              aria-label="CoFL-M local teacher field"
+              aria-label="cof-m local teacher field"
             >
               <path
                 d="M0 0 L-3.535 -3.535 A5 5 0 0 1 3.535 -3.535 Z"
@@ -468,7 +469,7 @@ export function CoFLMPlayground() {
             <svg
               className="coflm-map"
               viewBox={`0 0 ${scene.length_m} ${scene.width_m}`}
-              aria-label="CoFL-M docking map"
+              aria-label="cof-m docking map"
               onClick={(e) => {
                 if (busy) return;
                 const svg = e.currentTarget,
