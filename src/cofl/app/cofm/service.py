@@ -1,128 +1,44 @@
-"""Depth-only cof-m tasks: docking, exact-scene teacher, and Habitat observations."""
+"""Studio orchestration: scene resources, teacher previews, exports and depth capture.
+
+Planning algorithms live in cofl.planning; neural networks in cofl.models.
+This service adapts those capabilities to the Studio request/response contracts.
+"""
 
 from __future__ import annotations
 
 import base64
 from dataclasses import asdict, replace
-from functools import partial
 import io
 import json
-import re
 from pathlib import Path
 import subprocess
 import tempfile
 import threading
-from typing import Literal
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
 import numpy as np
-from pydantic import Field
-from starlette.concurrency import run_in_threadpool
 
-from cofl.generation.configuration_field import (
+from cofl.planning.configuration_field import (
     Box2D, ConfigurationTeacher, CoupledCrossProxy, Disc2D, PlanarWorld,
 )
 from cofl.generation import obstacle_scene
-from .contracts import Contract, Finite, Point2, ResourceId
-from .resources import require_same_origin
+from .contracts import MDock, MFieldSlice, MObservation, MObstacle, MPair, MScene, MSceneSummary, MTeacher
 
 
-class MObstacle(Contract):
-    kind: Literal["circle", "box"]
-    center: Point2
-    radius: float = 0
-    size: Point2 = (0, 0)
-
-
-class MSceneSummary(Contract):
-    id: str
-    label: str
-
-
-class MScene(Contract):
-    id: str
-    label: str
-    length_m: float
-    width_m: float
-    height_m: float
-    resolution_m: float
-    obstacles: list[MObstacle]
-    docking: dict[str, float | list[float] | str]
-    habitat_available: bool
-
-
-class MPointRequest(Contract):
-    scene_id: ResourceId
-    point: Point2
-
-
-class MDock(Contract):
-    point: Point2
-    valid: bool
-    clearance_m: float
-    reason: str
-
-
-class MRandomRequest(Contract):
-    scene_id: ResourceId
-    seed: int = Field(default=0, ge=0, le=2**32-1)
-
-
-class MPair(Contract):
-    start: MDock
-    goal: MDock
-
-
-class MTaskRequest(Contract):
-    scene_id: ResourceId
-    start: Point2
-    goal: Point2
-
-
-class MFieldSlice(Contract):
-    q_m: float
-    # x,y,Fx,Fy,Fq; these are configuration tangents, not physical velocities.
-    arrows: list[tuple[float, float, float, float, float]]
-
-
-class MTeacher(Contract):
-    source: Literal["geometry_teacher"] = "geometry_teacher"
-    reachable: bool
-    resolution_m: float
-    path: list[tuple[float, float, float]]
-    slices: list[MFieldSlice]
-    min_path_clearance_m: float | None
-    artifact_id: str
-    message: str
-
-
-class MObservationRequest(Contract):
-    scene_id: ResourceId
-    point: Point2
-    q_m: Finite = Field(default=0, ge=-0.1, le=0.1)
-
-
-class MObservation(Contract):
-    image: str
-    position: tuple[float, float, float]
-    q_m: float
-    heading_deg: float = 0
-    valid_fraction: float
-    far_m: float
-    source: Literal["habitat_depth"] = "habitat_depth"
-
-
-class CoFLMService:
+class CofMService:
     resolution = 0.1
+    body_clearance_m = 0.01  # Extra clearance from the whole body to an obstacle.
+    teacher_safety_weight = 0.0  # No additional preference for larger clearance.
+    teacher_safety_band_m = body_clearance_m
+    arrow_stride = 2  # Display spacing = resolution * stride = 0.2m.
+    max_display_arrows = 4000
 
     def __init__(self, config):
         self.config = config
-        self.robot = CoupledCrossProxy()
-        root = Path(__file__).resolve().parents[3]
-        self.habitat_python = config.coflm_habitat_python or root / ".habitat/coflm/bin/python"
-        self.output = config.coflm_output or root / "artifacts/cofl-m/studio-tasks"
+        self.robot = CoupledCrossProxy(margin=self.body_clearance_m)
+        root = Path(__file__).resolve().parents[4]
+        self.habitat_python = config.cofm_habitat_python or root / ".habitat/cofm/bin/python"
+        self.output = config.cofm_output or root / "artifacts/cof-m/studio-tasks"
         self.lock, self.render_lock = threading.RLock(), threading.Lock()
         self.cache = {}  # At most two CPU graphs; no model or GPU state is retained.
 
@@ -194,11 +110,15 @@ class CoFLMService:
     def _graph(self, scene_id):
         resource, _, _, world, _ = self._load(scene_id)
         path = resource.path.parent / "scene.json"
-        key = (scene_id, path.stat().st_mtime_ns, path.stat().st_size)
+        key = (scene_id, path.stat().st_mtime_ns, path.stat().st_size,
+               self.resolution, self.robot, self.teacher_safety_weight, self.teacher_safety_band_m)
         if key not in self.cache:
             if len(self.cache) >= 2:
                 self.cache.pop(next(iter(self.cache)))
-            self.cache[key] = ConfigurationTeacher(world, self.robot, resolution=self.resolution)
+            self.cache[key] = ConfigurationTeacher(
+                world, self.robot, resolution=self.resolution,
+                safety_weight=self.teacher_safety_weight, safety_band=self.teacher_safety_band_m,
+            )
         return self.cache[key]
 
     def random_pair(self, scene_id, seed):
@@ -243,10 +163,15 @@ class CoFLMService:
             slices = []
             for i, q in enumerate(teacher.q):
                 selected = np.zeros(teacher.shape[1:], bool)
-                selected[::4, ::4] = True
+                selected[::self.arrow_stride, ::self.arrow_stride] = True
                 selected &= reachable[i]
                 values = np.concatenate((teacher.states[i][selected, :2], field[i][selected]), axis=1)
-                slices.append(MFieldSlice(q_m=float(q), arrows=values[:1100].tolist()))
+                if len(values) > self.max_display_arrows:
+                    # Keep coverage across the whole map, rather than cutting
+                    # off one side when the scene exceeds the display budget.
+                    indices = np.linspace(0, len(values)-1, self.max_display_arrows, dtype=int)
+                    values = values[indices]
+                slices.append(MFieldSlice(q_m=float(q), arrows=values.tolist()))
             clearance = (float(self.robot.swept_clearance(teacher.world, path[:-1], path[1:]).min())
                          if len(path) > 1 else None)
             artifact_id = uuid.uuid4().hex
@@ -255,12 +180,12 @@ class CoFLMService:
             teacher.save(output / "teacher.npz")
             np.save(output / "path.npy", path, allow_pickle=False)
             obstacle_scene.save_json(output / "task.json", dict(
-                format="cofl_m_studio_teacher", version=1, source="geometry_teacher",
+                format="cof_m_studio_teacher", version=1, source="geometry_teacher",
                 scene_id=body.scene_id, scene_manifest=str(self.config.scenes[body.scene_id].path.parent / "scene.json"),
                 start=body.start, goal=body.goal, height_m=self.scene(body.scene_id).height_m,
                 robot=asdict(self.robot), yaw_rad=0, resolution_m=self.resolution,
                 reachable=bool(len(path)), endpoint_q=0, morph_weight=teacher.morph_weight,
-                safety_weight=0.2, safety_band_m=0.25,
+                safety_weight=self.teacher_safety_weight, safety_band_m=self.teacher_safety_band_m,
                 scene_config=self._load(body.scene_id)[1]["config"],
                 scene_obstacles=self._load(body.scene_id)[1]["obstacles"],
             ))
@@ -277,8 +202,8 @@ class CoFLMService:
         if float(self.robot.clearance(world, state)) <= self.robot.margin:
             raise ValueError("当前构型与障碍或规划边界冲突")
         if not self.habitat_python.is_file():
-            raise RuntimeError("Habitat interpreter unavailable; configure coflm_habitat_python")
-        with self.render_lock, tempfile.TemporaryDirectory(prefix="coflm-observation-") as directory:
+            raise RuntimeError("Habitat interpreter unavailable; configure cofm_habitat_python")
+        with self.render_lock, tempfile.TemporaryDirectory(prefix="cofm-observation-") as directory:
             output = Path(directory)
             (output / "obstacles.glb").symlink_to(resource.path)
             obstacle_scene.save_json(output / "obstacles.stage_config.json", dict(
@@ -310,58 +235,3 @@ class CoFLMService:
                                 valid_fraction=float(valid.mean()), far_m=cfg.far)
 
 
-def create_router(service, require_open, online_running):
-    router = APIRouter(prefix="/api/v1/coflm", tags=["cof-m"])
-
-    async def execute(request, method, *args):
-        require_same_origin(request)
-        require_open()
-        try:
-            return await run_in_threadpool(partial(method, *args))
-        except (FileNotFoundError, KeyError) as error:
-            raise HTTPException(404, str(error)) from error
-        except (ValueError, TypeError) as error:
-            raise HTTPException(400, str(error)) from error
-        except (RuntimeError, OSError) as error:
-            raise HTTPException(503, str(error)) from error
-        except ImportError as error:
-            raise HTTPException(503, "cof-m teacher requires the generation extra (SciPy): " + str(error)) from error
-
-    @router.get("/scenes", response_model=list[MSceneSummary])
-    async def scenes(request: Request):
-        return await execute(request, service.scenes)
-
-    @router.get("/scenes/{scene_id}", response_model=MScene)
-    async def scene(scene_id: str, request: Request):
-        return await execute(request, service.scene, scene_id)
-
-    @router.post("/validate", response_model=MDock)
-    async def validate(body: MPointRequest, request: Request):
-        return await execute(request, service.validate, body.scene_id, body.point)
-
-    @router.post("/sample", response_model=MPair)
-    async def sample(body: MRandomRequest, request: Request):
-        return await execute(request, service.random_pair, body.scene_id, body.seed)
-
-    @router.post("/teacher", response_model=MTeacher)
-    async def teacher(body: MTaskRequest, request: Request):
-        return await execute(request, service.teacher, body)
-
-    @router.post("/observation", response_model=MObservation)
-    async def observation(body: MObservationRequest, request: Request):
-        if online_running():
-            raise HTTPException(409, "End the active CoFL-S session before opening cof-m Habitat")
-        return await execute(request, service.observation, body)
-
-    @router.get("/tasks/{artifact_id}/teacher")
-    async def download(artifact_id: str, request: Request):
-        require_same_origin(request)
-        require_open()
-        if not re.fullmatch(r"[0-9a-f]{32}", artifact_id):
-            raise HTTPException(404, "Unknown teacher artifact")
-        path = service.output / artifact_id / "teacher.npz"
-        if not path.is_file():
-            raise HTTPException(404, "Unknown teacher artifact")
-        return FileResponse(path, media_type="application/octet-stream", filename="teacher.npz")
-
-    return router

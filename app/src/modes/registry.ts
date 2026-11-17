@@ -3,12 +3,12 @@ import type { ModeProps } from "./types";
 import { ScenePlayground } from "./ScenePlayground";
 import { ValInspector } from "./ValInspector";
 import { OnlinePlayground } from "./OnlinePlayground";
-import { CoFLMPlayground } from "./CoFLMPlayground";
+import { CofMPlayground } from "./CofMPlayground";
 
 /** Add a renderer here; backend modes independently own their execution protocol. */
 export const modeRenderers: Readonly<Record<string, ComponentType<ModeProps>>> =
   {
-    coflm: CoFLMPlayground,
+    cofm: CofMPlayground,
     scene: ScenePlayground,
     validation: ValInspector,
     online: OnlinePlayground,

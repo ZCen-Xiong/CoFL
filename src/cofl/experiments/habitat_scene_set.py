@@ -25,12 +25,12 @@ def build(output: Path, habitat_python: Path, *, frames=16):
         raise ValueError("frames must be positive")
     output.mkdir(parents=True, exist_ok=True)
     recipes = [
-        ("train", 100, "poles", 45, 0),
-        ("train", 101, "mixed", 25, 8),
-        ("train", 102, "walls", 0, 20),
-        ("train", 103, "poles", 45, 0),
-        ("val", 200, "poles", 45, 0),
-        ("val", 201, "mixed", 25, 8),
+        ("train", 100, "poles", 4, 0),
+        ("train", 101, "mixed", 2, 1),
+        ("train", 102, "walls", 0, 3),
+        ("train", 103, "poles", 4, 0),
+        ("val", 200, "poles", 4, 0),
+        ("val", 201, "mixed", 2, 1),
     ]
     scenes, catalog = [], dict(device="cpu", scenes={})
     # Persist configuration before rendering, so incomplete output is inspectable.
@@ -44,12 +44,12 @@ def build(output: Path, habitat_python: Path, *, frames=16):
         scenes.append(entry)
         catalog["scenes"][scene_id] = dict(
             path=(relative / "obstacles.glb").as_posix(),
-            label=f"cof-m {split} / {kind} / seed {seed}", domain_id="coflm", up_axis="y",
+            label=f"cof-m {split} / {kind} / seed {seed}", domain_id="cofm", up_axis="y",
             floors=[dict(id="fixed-xy", label="XOY z=1.2m (obstacle cutaway)",
                          elevation=0, min_height=-0.2, max_height=1.5)],
         )
     manifest = dict(
-        format="cofl_m_habitat_observation_set", version=1, status="rendering",
+        format="cof_m_habitat_observation_set", version=1, status="rendering",
         supervised_training_ready=False, labels_included=False,
         split_unit="scene", planning_plane="XOY", planning_height_m=1.2,
         min_surface_clearance_m=0.65, sensors=["depth"], scenes=scenes,
@@ -86,7 +86,7 @@ def build(output: Path, habitat_python: Path, *, frames=16):
     (output / "README.md").write_text(
         "# cof-m Habitat scene/observation set\n\n"
         "4 train scenes, 2 val scenes; split by scene, no shared seeds. "
-        "Full-height vertical obstacles; fixed planning height z=1.2m.\n\n"
+        "5m x 4m scenes; full-height vertical obstacles; fixed planning height z=1.2m.\n\n"
         "Contains GLB, metric depth, valid masks and poses. "
         "No flow-field supervision or trained model is included.\n\n"
         "Open the existing CoFL Studio with:\n\n```bash\n"

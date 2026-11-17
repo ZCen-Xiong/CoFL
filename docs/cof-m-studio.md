@@ -1,8 +1,10 @@
 # cof-m Studio 与 CoFL-S 原流程教程
 
-名称统一为 `cof-m`；已有 API/配置标识及 `artifacts/cofl-m/`、`.habitat/coflm` 路径继续兼容，下面的命令可直接使用现有产物。
+名称统一为 `cof-m`；API/配置标识及 `artifacts/cof-m/`、`.habitat/cofm` 路径使用统一命名，下面的命令可直接使用现有产物。
 
 2026-11-15：Studio 已新增独立的 **cof-m → cof-m Playground**。此前的 BEV GLB 预览只展示了几何，没有接入 cof-m teacher，也不符合第一人称、无语言任务的操作方式。现在使用此新入口。
+
+2026-11-17：原场景集已替换为 6 个 5×4m 小场景（4 train / 2 val，96 帧），配置路径不变。原有大场景已删除；刷新并重新选场景，必要时重启服务。
 
 ## 1. 启动和打开
 
@@ -10,7 +12,7 @@
 
 ```bash
 .venv/bin/python -m cofl app \
-  --config artifacts/cofl-m/habitat-train-preview/studio.yaml \
+  --config artifacts/cof-m/habitat-train-preview/studio.yaml \
   --no-browser --port 8788
 ```
 
@@ -40,7 +42,7 @@ ss -ltnp 'sport = :8788'
 
 ```bash
 .venv/bin/python -m cofl app \
-  --config artifacts/cofl-m/habitat-train-preview/studio.yaml \
+  --config artifacts/cof-m/habitat-train-preview/studio.yaml \
   --build --no-browser --port 8788
 ```
 
@@ -52,8 +54,8 @@ ss -ltnp 'sport = :8788'
 
 ```bash
 .venv/bin/python -m cofl.experiments.habitat_scene_set \
-  --output artifacts/cofl-m/habitat-train-preview \
-  --habitat-python .habitat/coflm/bin/python
+  --output artifacts/cof-m/habitat-train-preview \
+  --habitat-python .habitat/cofm/bin/python
 ```
 
 现有 6 场景、96 帧集无需重复生成；非空输出目录不会被覆盖。
@@ -77,6 +79,20 @@ ss -ltnp 'sport = :8788'
 
 胶囊代理的中心线不含两端各 10cm 的圆帽，因此中心线长度为 `0.60±2q` 米。全部形态的停泊并集横纵各跨 100cm；这不是某个实际构型同时达到 100×100cm。碰撞额外保留 1cm 裕度。圆端胶囊仍是代理外形。
 
+### 机体绕柱的余量与图中留白
+
+Playground 在 `src/cofl/app/cofm/service.py` 的 `CofMService` 中显式设置：
+
+```python
+body_clearance_m = 0.01
+teacher_safety_weight = 0.0
+teacher_safety_band_m = body_clearance_m
+```
+
+2026-11-17 已关闭原先 25cm 范围内的软间隙偏好，只保留整机外缘 1cm 的硬约束、路径长度及形态代价。柱间距仍为 0.65m，机体尺寸不变。`configuration_field.py` 中的独立实验默认软代价不影响这里显式传入的 Playground 参数。修改后重启 Studio 并重新生成 teacher，无需重新生成场景或构建前端。
+
+箭头的位置表示机体中心。在 q=0 时，沿十字臂方向中心至外缘已有 0.40m，因此中心到柱子表面需超过 0.41m，不能只有 0.01m。图中无箭头区域主要是机体碰撞区；关闭软代价不会使该区域变小。0.1m 计算网格和 0.2m 显示抽样还会使边界呈现离散留白，实际路径间隙不一定恰好为 1cm。
+
 这里的“任意形态”指**当前代理在固定 yaw=0 下的全部伸缩 q**。不包括任意旋转姿态、倾转旋翼或尚未建模的附件；CAD 和实际硬件包络尚需进一步确认。固定高度也不自动要求固定 yaw，但本次 teacher 原型仍明确固定 yaw。
 
 两种检查分别报告：
@@ -89,7 +105,7 @@ ss -ltnp 'sport = :8788'
 每次点击计算会保存到：
 
 ```text
-artifacts/cofl-m/studio-tasks/<页面显示的 artifact_id>/
+artifacts/cof-m/studio-tasks/<页面显示的 artifact_id>/
   teacher.npz
   path.npy
   task.json
@@ -100,15 +116,15 @@ artifacts/cofl-m/studio-tasks/<页面显示的 artifact_id>/
 配置可以覆盖默认路径与解释器：
 
 ```yaml
-coflm_habitat_python: /absolute/path/to/CoFL/.habitat/coflm/bin/python
-coflm_output: /absolute/path/to/CoFL/artifacts/cofl-m/studio-tasks
+cofm_habitat_python: /absolute/path/to/CoFL/.habitat/cofm/bin/python
+cofm_output: /absolute/path/to/CoFL/artifacts/cof-m/studio-tasks
 ```
 
 它们与 `scenes:` 一起放在 `studio.yaml` 中；相对路径按该 YAML 所在目录解析。Habitat/EGL 需要可访问 GPU 的执行环境。缺少解释器或设备权限时，深度窗口会明确报错，teacher 仍可在 CPU 计算。
 
 Teacher 直接读取所选场景的显式几何。圆柱使用解析圆形包络，墙使用矩形；现在 teacher 已支持柱林，不再只针对上一阶段的几何示例。位置分辨率 0.1m、q 步长 0.025m，保留路径/形态/间隙代价及扫掠碰撞检查。离散图中的不可达不等于连续构型空间绝对不可达。
 
-当前有完整几何的 teacher 可以利用遮挡后的信息。它作为参考监督展示，**不证明单帧深度网络能够唯一推断同样的全局最优路径**；相关观测歧义仍见 [监督设计文档](development-notes.md#flow-supervision)。
+当前有完整几何的 teacher 可以利用遮挡后的信息。它作为参考监督展示，**不证明单帧深度网络能够唯一推断同样的全局最优路径**。同一张深度图可能对应遮挡后不同的障碍布局，因此不能唯一决定全局最优动作。
 
 此前 `supervision-geometry-verified/*.npz` 是专门的反例实验标签；最初 `habitat-train-preview/` 只有场景与 96 帧观测。新入口计算的 teacher 位于上述 `studio-tasks/`，没有静默改写原观测集，也尚未打包成完整原生训练数据集。
 
@@ -162,4 +178,4 @@ benchmarks:
 - 本机 API：实际 Habitat 深度、112 构型 teacher 路径、下载、无效停泊拒绝和跨站拒绝均已检查。
 - 实际浏览器：新入口、无语言/旧模型控件、真实第一人称图、teacher、手选无效点拒绝与有效点恢复、q 切片和场景切换均已操作验证。
 
-截图及 API/浏览器验证记录位于 `artifacts/cofl-m/coflm-gui/`。截图与导出标签属于生成产物；本文中的截图复制在 `docs/assets/` 方便查看。
+截图及 API/浏览器验证记录位于 `artifacts/cof-m/cofm-gui/`。截图与导出标签属于生成产物；本文中的截图复制在 `docs/assets/` 方便查看。

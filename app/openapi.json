@@ -1451,13 +1451,13 @@
         }
       }
     },
-    "/api/v1/coflm/scenes": {
+    "/api/v1/cofm/scenes": {
       "get": {
         "tags": [
           "cof-m"
         ],
         "summary": "Scenes",
-        "operationId": "scenes_api_v1_coflm_scenes_get",
+        "operationId": "scenes_api_v1_cofm_scenes_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1468,7 +1468,7 @@
                     "$ref": "#/components/schemas/MSceneSummary"
                   },
                   "type": "array",
-                  "title": "Response Scenes Api V1 Coflm Scenes Get"
+                  "title": "Response Scenes Api V1 Cofm Scenes Get"
                 }
               }
             }
@@ -1476,13 +1476,13 @@
         }
       }
     },
-    "/api/v1/coflm/scenes/{scene_id}": {
+    "/api/v1/cofm/scenes/{scene_id}": {
       "get": {
         "tags": [
           "cof-m"
         ],
         "summary": "Scene",
-        "operationId": "scene_api_v1_coflm_scenes__scene_id__get",
+        "operationId": "scene_api_v1_cofm_scenes__scene_id__get",
         "parameters": [
           {
             "name": "scene_id",
@@ -1518,13 +1518,13 @@
         }
       }
     },
-    "/api/v1/coflm/validate": {
+    "/api/v1/cofm/validate": {
       "post": {
         "tags": [
           "cof-m"
         ],
         "summary": "Validate",
-        "operationId": "validate_api_v1_coflm_validate_post",
+        "operationId": "validate_api_v1_cofm_validate_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1559,13 +1559,13 @@
         }
       }
     },
-    "/api/v1/coflm/sample": {
+    "/api/v1/cofm/sample": {
       "post": {
         "tags": [
           "cof-m"
         ],
         "summary": "Sample",
-        "operationId": "sample_api_v1_coflm_sample_post",
+        "operationId": "sample_api_v1_cofm_sample_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1600,13 +1600,13 @@
         }
       }
     },
-    "/api/v1/coflm/teacher": {
+    "/api/v1/cofm/teacher": {
       "post": {
         "tags": [
           "cof-m"
         ],
         "summary": "Teacher",
-        "operationId": "teacher_api_v1_coflm_teacher_post",
+        "operationId": "teacher_api_v1_cofm_teacher_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1641,13 +1641,13 @@
         }
       }
     },
-    "/api/v1/coflm/observation": {
+    "/api/v1/cofm/observation": {
       "post": {
         "tags": [
           "cof-m"
         ],
         "summary": "Observation",
-        "operationId": "observation_api_v1_coflm_observation_post",
+        "operationId": "observation_api_v1_cofm_observation_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -1682,13 +1682,13 @@
         }
       }
     },
-    "/api/v1/coflm/tasks/{artifact_id}/teacher": {
+    "/api/v1/cofm/tasks/{artifact_id}/teacher": {
       "get": {
         "tags": [
           "cof-m"
         ],
         "summary": "Download",
-        "operationId": "download_api_v1_coflm_tasks__artifact_id__teacher_get",
+        "operationId": "download_api_v1_cofm_tasks__artifact_id__teacher_get",
         "parameters": [
           {
             "name": "artifact_id",

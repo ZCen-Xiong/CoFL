@@ -517,11 +517,11 @@ def create_app(
             return await run_in_threadpool(online.create, payload)
 
     app.include_router(create_online_router(online, session_creator=create_online_session))
-    from .coflm import CoFLMService, create_router as create_coflm_router
+    from .cofm import CofMService, create_router as create_cofm_router
 
-    coflm = CoFLMService(config)
-    app.state.coflm = coflm
-    app.include_router(create_coflm_router(coflm, require_open, lambda: online.is_running))
+    cofm = CofMService(config)
+    app.state.cofm = cofm
+    app.include_router(create_cofm_router(cofm, require_open, lambda: online.is_running))
     app.include_router(
         create_online_router(
             online,

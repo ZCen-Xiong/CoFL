@@ -28,19 +28,19 @@ import numpy as np
 @dataclass(frozen=True)
 class SceneConfig:
     seed: int = 42
-    length: float = 16.0
-    width: float = 10.0
+    length: float = 5.0
+    width: float = 4.0
     height: float = 3.0
-    poles: int = 45
+    poles: int = 4
     walls: int = 0
     rings: int = 0  # Legacy option: only zero is accepted.
     min_clearance: float = 0.65
     gap_wall: int = 0
-    gap_x: float = 7.0
+    gap_x: float = 2.5
     gap_width: float = 0.70
     wall_thickness: float = 0.25
     camera_height: float = 1.2
-    camera_end: float = 5.5
+    camera_end: float = 1.5
     camera_clearance: float = 0.5
     frames: int = 16
     image_width: int = 320
@@ -297,7 +297,7 @@ def generate_scene(output: Path, cfg: SceneConfig):
         up=[0, 1, 0], front=[0, 0, -1], units_to_meters=1.0))
     focal = cfg.image_width / (2 * math.tan(math.radians(cfg.hfov_deg) / 2))
     metadata = dict(
-        format="cofl_m_depth_scene", version=1, seed=cfg.seed, config=asdict(cfg),
+        format="cof_m_depth_scene", version=1, seed=cfg.seed, config=asdict(cfg),
         coordinates=dict(planning="x forward, y left, z up; metres",
                          habitat="X right, Y up, camera forward -Z; metres",
                          planning_to_habitat=PLANNING_TO_HABITAT.tolist()),
@@ -392,7 +392,7 @@ def main(argv=None):
         output = args.output.resolve()
         if args.render_existing:
             metadata = json.loads((output / "scene.json").read_text())
-            if metadata.get("format") != "cofl_m_depth_scene" or metadata.get("version") != 1:
+            if metadata.get("format") != "cof_m_depth_scene" or metadata.get("version") != 1:
                 raise ValueError("Unsupported scene manifest")
             SceneConfig(**metadata["config"]).validate()
         else:

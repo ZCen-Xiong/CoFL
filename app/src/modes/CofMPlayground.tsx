@@ -34,7 +34,7 @@ function Cross({
   );
 }
 
-export function CoFLMPlayground() {
+export function CofMPlayground() {
   const [scenes, setScenes] = useState<Summary[]>([]);
   const [sceneId, setSceneId] = useState("");
   const [scene, setScene] = useState<Scene | null>(null);
@@ -53,7 +53,7 @@ export function CoFLMPlayground() {
 
   useEffect(() => {
     let active = true;
-    void api.GET("/api/v1/coflm/scenes").then(({ data, error }) => {
+    void api.GET("/api/v1/cofm/scenes").then(({ data, error }) => {
       if (!active) return;
       if (error || !data) {
         setError(apiError(error).message);
@@ -75,7 +75,7 @@ export function CoFLMPlayground() {
     version: number,
   ) {
     try {
-      const { data, error } = await api.POST("/api/v1/coflm/observation", {
+      const { data, error } = await api.POST("/api/v1/cofm/observation", {
         body: { scene_id: id, point: point as XY, q_m: q },
       });
       if (error || !data) throw apiError(error);
@@ -93,7 +93,7 @@ export function CoFLMPlayground() {
     await Promise.all([
       (async () => {
         try {
-          const { data, error } = await api.POST("/api/v1/coflm/teacher", {
+          const { data, error } = await api.POST("/api/v1/cofm/teacher", {
             body: { scene_id: id, start: a.point, goal: b.point },
           });
           if (error || !data) throw apiError(error);
@@ -117,7 +117,7 @@ export function CoFLMPlayground() {
     setTeacher(null);
     setObservation(null);
     try {
-      const { data, error } = await api.POST("/api/v1/coflm/sample", {
+      const { data, error } = await api.POST("/api/v1/cofm/sample", {
         body: { scene_id: id, seed: seed.current++ },
       });
       if (error || !data) throw apiError(error);
@@ -146,7 +146,7 @@ export function CoFLMPlayground() {
     void (async () => {
       try {
         const { data, error } = await api.GET(
-          "/api/v1/coflm/scenes/{scene_id}",
+          "/api/v1/cofm/scenes/{scene_id}",
           {
             params: { path: { scene_id: sceneId } },
           },
@@ -174,7 +174,7 @@ export function CoFLMPlayground() {
     setError("");
     setDepthError("");
     try {
-      const { data, error } = await api.POST("/api/v1/coflm/validate", {
+      const { data, error } = await api.POST("/api/v1/cofm/validate", {
         body: { scene_id: sceneId, point },
       });
       if (error || !data) throw apiError(error);
@@ -208,8 +208,8 @@ export function CoFLMPlayground() {
       Math.abs(observation.q_m - selected[2]) > 0.001);
 
   return (
-    <main className="coflm-workspace">
-      <aside className="coflm-controls">
+    <main className="cofm-workspace">
+      <aside className="cofm-controls">
         <div className="control-section">
           <div className="section-label">cof-m · DEPTH ONLY</div>
           <Select.Root value={sceneId} onValueChange={setSceneId}>
@@ -264,7 +264,7 @@ export function CoFLMPlayground() {
               ["终点", goal],
             ] as const
           ).map(([label, dock]) => (
-            <div className="coflm-dock" key={label}>
+            <div className="cofm-dock" key={label}>
               <strong>
                 {label}{" "}
                 {dock
@@ -311,7 +311,7 @@ export function CoFLMPlayground() {
           </Text>
         </div>
       </aside>
-      <section className="coflm-main">
+      <section className="cofm-main">
         {busy && (
           <Callout.Root>
             <Callout.Text>
@@ -324,17 +324,17 @@ export function CoFLMPlayground() {
             <Callout.Text>{error}</Callout.Text>
           </Callout.Root>
         )}
-        <div className="coflm-observations">
-          <section className="coflm-panel">
+        <div className="cofm-observations">
+          <section className="cofm-panel">
             <div className="section-label">第一人称 · HABITAT DEPTH</div>
             {observation ? (
               <img
-                className="coflm-depth"
+                className="cofm-depth"
                 src={observation.image}
                 alt="Habitat first-person depth at fixed flight height"
               />
             ) : (
-              <div className="coflm-placeholder">
+              <div className="cofm-placeholder">
                 选择有效起点后采集单通道深度
               </div>
             )}
@@ -376,10 +376,10 @@ export function CoFLMPlayground() {
               更新当前构型深度
             </Button>
           </section>
-          <section className="coflm-panel">
+          <section className="cofm-panel">
             <div className="section-label">局部流场 · 前方 5m / HFOV 90°</div>
             <svg
-              className="coflm-sector"
+              className="cofm-sector"
               viewBox="-5 -5.2 10 5.7"
               aria-label="cof-m local teacher field"
             >
@@ -399,7 +399,7 @@ export function CoFLMPlayground() {
                     y2={-(x - selected[0]) - 0.25 * fx}
                     stroke="#277f72"
                     strokeWidth=".035"
-                    markerEnd="url(#coflm-local-arrow)"
+                    markerEnd="url(#cofm-local-arrow)"
                   />
                 ) : (
                   fq !== 0 && (
@@ -415,7 +415,7 @@ export function CoFLMPlayground() {
               )}
               <defs>
                 <marker
-                  id="coflm-local-arrow"
+                  id="cofm-local-arrow"
                   markerWidth="4"
                   markerHeight="4"
                   refX="3"
@@ -453,7 +453,7 @@ export function CoFLMPlayground() {
             </label>
           </section>
         </div>
-        <section className="coflm-panel">
+        <section className="cofm-panel">
           <Flex align="center" justify="between" wrap="wrap" gap="2">
             <div className="section-label">
               XOY 选点与路径地图 · 正在选择
@@ -467,7 +467,7 @@ export function CoFLMPlayground() {
           </Flex>
           {scene && (
             <svg
-              className="coflm-map"
+              className="cofm-map"
               viewBox={`0 0 ${scene.length_m} ${scene.width_m}`}
               aria-label="cof-m docking map"
               onClick={(e) => {
@@ -608,7 +608,7 @@ export function CoFLMPlayground() {
                 预测；不代表单帧深度足以推断遮挡后的路径。
               </Text>
               <a
-                href={`/api/v1/coflm/tasks/${teacher.artifact_id}/teacher`}
+                href={`/api/v1/cofm/tasks/${teacher.artifact_id}/teacher`}
                 download
               >
                 下载当前 teacher.npz

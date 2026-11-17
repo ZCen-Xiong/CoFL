@@ -3,10 +3,59 @@
 import numpy as np
 import pytest
 
-from cofl.experiments.supervision_geometry import make_worlds, optical_depth_scan
-from cofl.generation.configuration_field import (
+from cofl.planning.configuration_field import (
     Box2D, ConfigurationTeacher, CoupledCrossProxy, PlanarWorld,
 )
+
+
+
+def make_worlds():
+    bounds = Box2D(0, 10, -3, 3)
+
+    def gap(name, width):
+        return PlanarWorld(name, bounds, (
+            Box2D(4.9, 5.1, -3, -width / 2), Box2D(4.9, 5.1, width / 2, 3),
+        ), (1, 0), (9, 0))
+
+    return dict(
+        empty=PlanarWorld("empty", bounds, (), (1, 0), (9, 0)),
+        narrow_065=gap("narrow_065", 0.65),
+        narrow_059=gap("narrow_059", 0.59),
+        u_pocket=PlanarWorld("u_pocket", bounds, (
+            Box2D(5.8, 6.1, -1.6, 1.6), Box2D(2.8, 6.1, 1.4, 1.6),
+            Box2D(2.8, 6.1, -1.6, -1.4),
+        ), (4, 0), (8, 0)),
+        two_slots=PlanarWorld("two_slots", bounds, (
+            Box2D(3.9, 4.1, -3, -1.525), Box2D(3.9, 4.1, -0.875, 3),
+            Box2D(0, 6.675, 1.1, 1.3), Box2D(7.325, 10, 1.1, 1.3),
+        ), (1, -1.2), (7, 2.4)),
+        upper_blocked=PlanarWorld("upper_blocked", bounds, (
+            Box2D(3, 4, -2, 2), Box2D(4, 6, 0, 3),
+        ), (1, 0), (9, 0)),
+        lower_blocked=PlanarWorld("lower_blocked", bounds, (
+            Box2D(3, 4, -2, 2), Box2D(4, 6, -3, 0),
+        ), (1, 0), (9, 0)),
+    )
+
+
+def optical_depth_scan(world, angles):
+    """Analytic horizontal pinhole scan, Z depth (not ray range)."""
+    ox, oy = world.start_xy
+    slope = np.tan(angles)
+    depth = np.full_like(slope, np.inf)
+    for box in world.obstacles:
+        with np.errstate(divide="ignore", invalid="ignore"):
+            low = (box.ymin - oy) / slope
+            high = (box.ymax - oy) / slope
+        tmin = np.maximum(box.xmin - ox, np.minimum(low, high))
+        tmax = np.minimum(box.xmax - ox, np.maximum(low, high))
+        parallel = abs(slope) < 1e-12
+        y_inside = box.ymin <= oy <= box.ymax
+        tmin = np.where(parallel, box.xmin - ox if y_inside else np.inf, tmin)
+        tmax = np.where(parallel, box.xmax - ox if y_inside else -np.inf, tmax)
+        hit = (tmin <= tmax) & (tmax > 0)
+        depth = np.minimum(depth, np.where(hit, np.maximum(tmin, 0), np.inf))
+    return depth
 
 
 def test_shape_envelope_and_coupling():

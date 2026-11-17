@@ -1,12 +1,14 @@
 # Models and coordinate contracts
 
+The cof-m Playground uses the geometric teacher in `src/cofl/planning/configuration_field.py`,
+through `src/cofl/app/cofm/`. Its unused DFormer experiment has been removed.
+See the [repository layout](repository-layout.md) for its active dependencies.
+
 CoFL and CoFL-S predict continuous fields by multiplying a normalized direction
 by a nonnegative magnitude. They share an observation encoder and use distinct
 query decoders.
 
-For the separate depth-only DFormer experiment with coordinate goals, see
-[cof-m depth pipeline](development-notes.md#depth-pipeline). The contracts below
-describe the published RGB/language policies.
+The contracts below describe the original RGB/language policies.
 
 | Contract | CoFL | CoFL-S |
 | --- | --- | --- |

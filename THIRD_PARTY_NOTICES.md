@@ -28,16 +28,6 @@ upstream URLs and the corresponding npm package versions in `sources.json`.
 
 ## Model and dataset assets
 
-`src/cofl/models/vendor/dformer.py` adapts the DFormer encoder from
-[VCIP-RGBD/DFormer](https://github.com/VCIP-RGBD/DFormer), commit
-`e3273009b759b578945483828ff315d560be94c9`, under its MIT license, copyright
-2023 VCIP-RGBD. The complete permission notice is retained in that source file.
-Local changes replace the main stem with a single-channel stem and remove
-MMCV/MMEngine dependencies, legacy loading and unused model variants. The
-upstream README also states a non-commercial restriction; consult the upstream
-authors about that discrepancy before commercial distribution. No upstream
-checkpoints or datasets are bundled.
-
 SigLIP2 components, Matterport3D observations, R2R/RxR annotations and alignment
 sources are covered by the model/dataset repositories' own LICENSE and
 THIRD_PARTY_NOTICES files. Their terms are not replaced by the source-code

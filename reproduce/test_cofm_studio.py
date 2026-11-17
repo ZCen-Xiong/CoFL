@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from cofl.app.coflm import CoFLMService, MTaskRequest
+from cofl.app.cofm import CofMService, MTaskRequest
 from cofl.app.config import SceneResource, StudioConfig
 from cofl.app.server import create_app
 from cofl.generation.obstacle_scene import SceneConfig, generate_scene, save_json, write_glb
@@ -14,23 +14,24 @@ from cofl.generation.obstacle_scene import SceneConfig, generate_scene, save_jso
 
 def make_service(tmp_path, obstacles=()):
     folder = tmp_path / "scene"
-    metadata = generate_scene(folder, SceneConfig(poles=0))
+    # These collision fixtures use x=5..6m, independent of the scene-generator defaults.
+    metadata = generate_scene(folder, SceneConfig(length=16, width=10, poles=0))
     metadata["obstacles"].extend(obstacles)
     save_json(folder / "scene.json", metadata)
     write_glb(folder / "obstacles.glb", metadata["obstacles"])
     config = StudioConfig(device="cpu", scenes={"example": SceneResource(path=folder/"obstacles.glb")},
-                          coflm_output=tmp_path/"teachers")
-    return CoFLMService(config), config
+                          cofm_output=tmp_path/"teachers")
+    return CofMService(config), config
 
 
 def test_new_entry_and_separate_api(tmp_path):
     service, config = make_service(tmp_path)
     app = create_app(config)
-    assert "coflm" in app.state.domains
-    assert app.state.domains["coflm"].resource_kinds == []
+    assert "cofm" in app.state.domains
+    assert app.state.domains["cofm"].resource_kinds == []
     paths = app.openapi()["paths"]
-    assert "/api/v1/coflm/teacher" in paths
-    assert "/api/v1/coflm/observation" in paths
+    assert "/api/v1/cofm/teacher" in paths
+    assert "/api/v1/cofm/observation" in paths
     assert "/api/v1/predict" in paths
     assert "/api/v1/domains/ego2d/sessions" in paths
     dock = service.scene("example").docking

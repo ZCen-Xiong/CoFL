@@ -1,6 +1,6 @@
 # Habitat lives separately from the Python 3.12 / PyTorch model environment.
-# conda env create --prefix .habitat/coflm -f configs/generation/habitat_depth.yaml
-name: coflm-habitat
+# conda env create --prefix .habitat/cofm -f configs/generation/habitat_depth.yaml
+name: cofm-habitat
 channels:
   - conda-forge
   - aihabitat

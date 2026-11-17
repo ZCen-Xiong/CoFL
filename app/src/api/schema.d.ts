@@ -345,7 +345,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/coflm/scenes": {
+    "/api/v1/cofm/scenes": {
         parameters: {
             query?: never;
             header?: never;
@@ -353,7 +353,7 @@ export interface paths {
             cookie?: never;
         };
         /** Scenes */
-        get: operations["scenes_api_v1_coflm_scenes_get"];
+        get: operations["scenes_api_v1_cofm_scenes_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -362,7 +362,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/coflm/scenes/{scene_id}": {
+    "/api/v1/cofm/scenes/{scene_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -370,7 +370,7 @@ export interface paths {
             cookie?: never;
         };
         /** Scene */
-        get: operations["scene_api_v1_coflm_scenes__scene_id__get"];
+        get: operations["scene_api_v1_cofm_scenes__scene_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -379,7 +379,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/coflm/validate": {
+    "/api/v1/cofm/validate": {
         parameters: {
             query?: never;
             header?: never;
@@ -389,14 +389,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Validate */
-        post: operations["validate_api_v1_coflm_validate_post"];
+        post: operations["validate_api_v1_cofm_validate_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/coflm/sample": {
+    "/api/v1/cofm/sample": {
         parameters: {
             query?: never;
             header?: never;
@@ -406,14 +406,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Sample */
-        post: operations["sample_api_v1_coflm_sample_post"];
+        post: operations["sample_api_v1_cofm_sample_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/coflm/teacher": {
+    "/api/v1/cofm/teacher": {
         parameters: {
             query?: never;
             header?: never;
@@ -423,14 +423,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Teacher */
-        post: operations["teacher_api_v1_coflm_teacher_post"];
+        post: operations["teacher_api_v1_cofm_teacher_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/coflm/observation": {
+    "/api/v1/cofm/observation": {
         parameters: {
             query?: never;
             header?: never;
@@ -440,14 +440,14 @@ export interface paths {
         get?: never;
         put?: never;
         /** Observation */
-        post: operations["observation_api_v1_coflm_observation_post"];
+        post: operations["observation_api_v1_cofm_observation_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/coflm/tasks/{artifact_id}/teacher": {
+    "/api/v1/cofm/tasks/{artifact_id}/teacher": {
         parameters: {
             query?: never;
             header?: never;
@@ -455,7 +455,7 @@ export interface paths {
             cookie?: never;
         };
         /** Download */
-        get: operations["download_api_v1_coflm_tasks__artifact_id__teacher_get"];
+        get: operations["download_api_v1_cofm_tasks__artifact_id__teacher_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2628,7 +2628,7 @@ export interface operations {
             };
         };
     };
-    scenes_api_v1_coflm_scenes_get: {
+    scenes_api_v1_cofm_scenes_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2648,7 +2648,7 @@ export interface operations {
             };
         };
     };
-    scene_api_v1_coflm_scenes__scene_id__get: {
+    scene_api_v1_cofm_scenes__scene_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2679,7 +2679,7 @@ export interface operations {
             };
         };
     };
-    validate_api_v1_coflm_validate_post: {
+    validate_api_v1_cofm_validate_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2712,7 +2712,7 @@ export interface operations {
             };
         };
     };
-    sample_api_v1_coflm_sample_post: {
+    sample_api_v1_cofm_sample_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2745,7 +2745,7 @@ export interface operations {
             };
         };
     };
-    teacher_api_v1_coflm_teacher_post: {
+    teacher_api_v1_cofm_teacher_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2778,7 +2778,7 @@ export interface operations {
             };
         };
     };
-    observation_api_v1_coflm_observation_post: {
+    observation_api_v1_cofm_observation_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2811,7 +2811,7 @@ export interface operations {
             };
         };
     };
-    download_api_v1_coflm_tasks__artifact_id__teacher_get: {
+    download_api_v1_cofm_tasks__artifact_id__teacher_get: {
         parameters: {
             query?: never;
             header?: never;

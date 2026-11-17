@@ -16,8 +16,8 @@ def test_default_forest_surface_spacing_and_full_height(seed):
     cfg = SceneConfig(seed=seed)
     obstacles = build_obstacles(cfg)
     poles = [o for o in obstacles if o["kind"] == "cylinder"]
-    assert len(poles) == 45
-    assert len(obstacles) == 46  # 45 poles and a floor, no rings or default gap wall.
+    assert len(poles) == cfg.poles
+    assert len(obstacles) == cfg.poles + 1  # Poles and a floor; no default gap wall.
     for index, a in enumerate(poles):
         for b in poles[:index]:
             # Independent pair check against the circular outer envelope.
@@ -29,7 +29,7 @@ def test_default_forest_surface_spacing_and_full_height(seed):
 
 
 def test_mixed_walls_and_columns_and_optional_gap():
-    cfg = SceneConfig(poles=25, walls=8, gap_wall=1)
+    cfg = SceneConfig(length=16, width=10, gap_x=7, poles=25, walls=8, gap_wall=1)
     obstacles = build_obstacles(cfg)
     audit = audit_obstacles(cfg, obstacles)
     assert audit["min_surface_gap_m"] > 0.65
@@ -41,7 +41,7 @@ def test_mixed_walls_and_columns_and_optional_gap():
 
 
 def test_wall_only_mode_and_manifest(tmp_path):
-    cfg = SceneConfig(poles=0, walls=12)
+    cfg = SceneConfig(length=16, width=10, poles=0, walls=12)
     metadata = generate_scene(tmp_path / "scene", cfg)
     assert metadata["gap"] is None
     assert metadata["planning"]["plane"] == "XOY"
