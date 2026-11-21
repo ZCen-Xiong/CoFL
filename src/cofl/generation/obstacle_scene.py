@@ -2,7 +2,7 @@
 
 Run as a module in the project environment, or execute this file directly in a
 separate Habitat environment. Only NumPy is needed for --generate-only.
-No RGB sensor, scene download, Bullet dynamics, navmesh or learned model is used.
+Captures aligned RGB-D; no scene download, Bullet dynamics, navmesh or learned model.
 """
 
 from __future__ import annotations
@@ -323,7 +323,7 @@ def generate_scene(output: Path, cfg: SceneConfig):
 
 
 def render_depth(output: Path, metadata, *, gpu_device_id=0):
-    """Load static GLB in Habitat; do not create a color sensor or use navmesh."""
+    """Load static GLB in Habitat and capture aligned RGB-D without navmesh."""
     try:
         import habitat_sim
         import magnum as mn
@@ -331,7 +331,7 @@ def render_depth(output: Path, metadata, *, gpu_device_id=0):
         raise RuntimeError("Habitat-Sim is not installed in this interpreter. "
                            "Use a Habitat environment or --generate-only.") from error
     cfg = SceneConfig(**metadata["config"])
-    if any((output / name).exists() for name in ("depth", "valid", "preview")):
+    if any((output / name).exists() for name in ("depth", "valid", "preview", "rgb")):
         raise FileExistsError("Depth output already exists; use a new output directory")
     backend = habitat_sim.SimulatorConfiguration()
     backend.scene_id = str((output / "obstacles.stage_config.json").resolve())
@@ -346,17 +346,24 @@ def render_depth(output: Path, metadata, *, gpu_device_id=0):
     sensor.hfov = mn.Deg(cfg.hfov_deg)
     sensor.near, sensor.far = cfg.near, cfg.far
     agent = habitat_sim.agent.AgentConfiguration()
-    agent.sensor_specifications = [sensor]
+    color=habitat_sim.CameraSensorSpec()
+    color.uuid="rgb";color.sensor_type=habitat_sim.SensorType.COLOR
+    color.resolution=sensor.resolution;color.position=mn.Vector3(0);color.hfov=mn.Deg(cfg.hfov_deg)
+    color.near,color.far=cfg.near,cfg.far
+    agent.sensor_specifications = [sensor,color]
     simulator = habitat_sim.Simulator(habitat_sim.Configuration(backend, [agent]))
     try:
-        for name in ("depth", "valid", "preview"):
+        for name in ("depth", "valid", "preview", "rgb"):
             (output / name).mkdir()
         for frame in metadata["frames"]:
             state = habitat_sim.AgentState()
             state.position = np.asarray(frame["position_habitat"], dtype=np.float32)
             # Identity rotation: image looks along -Z, or planning +x.
             simulator.get_agent(0).set_state(state, reset_sensors=True)
-            raw = np.asarray(simulator.get_sensor_observations()["depth"], dtype=np.float32)
+            obs=simulator.get_sensor_observations()
+            from PIL import Image
+            Image.fromarray(np.asarray(obs["rgb"])[:,:,:3]).save(output/"rgb"/f"{frame['index']:06d}.png")
+            raw = np.asarray(obs["depth"], dtype=np.float32)
             valid = np.isfinite(raw) & (raw >= cfg.near) & (raw < cfg.far * (1 - 1e-6))
             depth = np.where(valid, raw, 0).astype(np.float32)
             stem = f"{frame['index']:06d}"
@@ -364,7 +371,7 @@ def render_depth(output: Path, metadata, *, gpu_device_id=0):
             np.save(output / "valid" / (stem + ".npy"), valid, allow_pickle=False)
             # Metric NPY is authoritative; grayscale PNG is for viewing only.
             save_depth_preview(output / "preview" / (stem + ".png"), depth, cfg.far)
-            frame.update(depth=f"depth/{stem}.npy", valid=f"valid/{stem}.npy",
+            frame.update(rgb=f"rgb/{stem}.png", depth=f"depth/{stem}.npy", valid=f"valid/{stem}.npy",
                          preview=f"preview/{stem}.png", valid_fraction=float(valid.mean()))
         metadata.update(depth_rendered=True,
                         habitat_sim_version=str(getattr(habitat_sim, "__version__", "unknown")))
@@ -401,7 +408,7 @@ def main(argv=None):
         print(f"Scene: {output / 'obstacles.glb'} ({len(metadata['obstacles'])} objects)")
         if not args.generate_only:
             render_depth(output, metadata, gpu_device_id=args.gpu_device_id)
-            print(f"Rendered {len(metadata['frames'])} depth frames; no RGB sensor enabled")
+            print(f"Rendered {len(metadata['frames'])} depth frames; aligned RGB-D sensors enabled")
         return 0
     except (ValueError, FileExistsError, RuntimeError, FileNotFoundError) as error:
         parser.exit(2, str(error) + "\n")

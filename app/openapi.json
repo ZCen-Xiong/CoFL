@@ -2292,52 +2292,22 @@
         ],
         "title": "MDock"
       },
-      "MFieldSlice": {
-        "properties": {
-          "q_m": {
-            "type": "number",
-            "title": "Q M"
-          },
-          "arrows": {
-            "items": {
-              "prefixItems": [
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "number"
-                },
-                {
-                  "type": "number"
-                }
-              ],
-              "type": "array",
-              "maxItems": 5,
-              "minItems": 5
-            },
-            "type": "array",
-            "title": "Arrows"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "q_m",
-          "arrows"
-        ],
-        "title": "MFieldSlice"
-      },
       "MObservation": {
         "properties": {
           "image": {
             "type": "string",
             "title": "Image"
+          },
+          "rgb_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rgb Image"
           },
           "position": {
             "prefixItems": [
@@ -2355,10 +2325,6 @@
             "maxItems": 3,
             "minItems": 3,
             "title": "Position"
-          },
-          "q_m": {
-            "type": "number",
-            "title": "Q M"
           },
           "heading_deg": {
             "type": "number",
@@ -2385,7 +2351,6 @@
         "required": [
           "image",
           "position",
-          "q_m",
           "valid_fraction",
           "far_m"
         ],
@@ -2411,13 +2376,6 @@
             "maxItems": 2,
             "minItems": 2,
             "title": "Point"
-          },
-          "q_m": {
-            "type": "number",
-            "maximum": 0.1,
-            "minimum": -0.1,
-            "title": "Q M",
-            "default": 0
           }
         },
         "additionalProperties": false,
@@ -2609,6 +2567,26 @@
           "habitat_available": {
             "type": "boolean",
             "title": "Habitat Available"
+          },
+          "map_image": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Map Image"
+          },
+          "source_kind": {
+            "type": "string",
+            "enum": [
+              "procedural",
+              "matterport"
+            ],
+            "title": "Source Kind",
+            "default": "procedural"
           }
         },
         "additionalProperties": false,
@@ -2679,6 +2657,31 @@
             "maxItems": 2,
             "minItems": 2,
             "title": "Goal"
+          },
+          "narrow_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Narrow Only"
+          },
+          "max_width_m": {
+            "type": "number",
+            "maximum": 3.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Width M",
+            "default": 1.1
+          },
+          "min_narrow_length_m": {
+            "type": "number",
+            "maximum": 5.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Min Narrow Length M",
+            "default": 0.3
           }
         },
         "additionalProperties": false,
@@ -2714,24 +2717,37 @@
                 },
                 {
                   "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Path"
+          },
+          "arrows": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
                 },
                 {
                   "type": "number"
                 }
               ],
               "type": "array",
-              "maxItems": 3,
-              "minItems": 3
+              "maxItems": 4,
+              "minItems": 4
             },
             "type": "array",
-            "title": "Path"
-          },
-          "slices": {
-            "items": {
-              "$ref": "#/components/schemas/MFieldSlice"
-            },
-            "type": "array",
-            "title": "Slices"
+            "title": "Arrows"
           },
           "min_path_clearance_m": {
             "anyOf": [
@@ -2751,6 +2767,18 @@
           "message": {
             "type": "string",
             "title": "Message"
+          },
+          "narrow": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Narrow"
           }
         },
         "additionalProperties": false,
@@ -2759,7 +2787,7 @@
           "reachable",
           "resolution_m",
           "path",
-          "slices",
+          "arrows",
           "min_path_clearance_m",
           "artifact_id",
           "message"

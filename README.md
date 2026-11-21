@@ -1,5 +1,12 @@
 # CoFL
 
+CoF-M 用户入口：
+
+- [使用手册](docs/cof-m-guide.md)：场景配置 → 生成 → 网页检查 → 训练 → 部署；标明各阶段是否已接通。
+- [仓库上下文](docs/repository-context.md)：当前目标、代码职责、参数、硬件约束和接续工作。
+
+当前优先验证 Matterport3D RGB-D 与几何 teacher 生成，DFormer 训练和真机部署尚未接通。以下为原 CoFL/CoFL-S 项目说明。
+
 Continuous flow-field policies for language-conditioned navigation.
 
 <table>
@@ -275,10 +282,9 @@ See [rendering](docs/rendering.md) for upstream scene assets and
 [generation](docs/generation.md) for recipes and the limits of historical
 dataset reproduction.
 
-For full-height vertical poles and walls with surface gaps above 0.65m,
-see the [cof-m depth-only Habitat scene generator](docs/cof-m-obstacle-scenes.md).
-The [cof-m Playground](docs/cof-m-studio.md) displays geometry-based teacher fields
-and Habitat depth; it does not run a neural policy.
+For CoF-M Matterport3D RGB-D, narrow-route collection, or controlled vertical
+pole/wall scenes, use the [CoF-M guide](docs/cof-m-guide.md). Its Playground
+displays geometry-based teacher fields and aligned RGB-D; it does not run a neural policy.
 
 CoFL evaluation includes batched image-field and image goal/trajectory/collision
 scoring. CoFL-S evaluation uses the closed-loop Habitat/VLN runner on the
@@ -291,14 +297,12 @@ external assets and the limits of paper reproduction.
 
 ## Documentation
 
-- [Repository layout](docs/repository-layout.md): model, planning, generation and Studio responsibilities.
+- [CoF-M guide](docs/cof-m-guide.md): the single user workflow, from scene configuration to deployment readiness.
+- [Repository context](docs/repository-context.md): implementation boundaries, hardware and development context.
 
-- [cof-m Studio](docs/cof-m-studio.md): depth-only tasks, docking points and teacher visualization.
-- [cof-m scene generation](docs/cof-m-obstacle-scenes.md): vertical obstacles and Habitat depth capture.
-- [Models](docs/models.md): encoder, decoders, depth and action prediction.
-- [Inference rules](docs/inference.md): shared grid, time schedule, boundary projection and camera conditioning.
-- [Dataset format](docs/dataset-format.md): observations, annotations, geometry and storage.
-- [Training](docs/training.md): configuration, loss, validation, logging and resume.
+The reference manuals shipped before the CoF-M work remain in `docs/` for
+the original CoFL/CoFL-S implementation. CoF-M instructions are maintained only
+in the two documents above.
 
 BibTeX entries are in [references.bib](references.bib). Cite the work whose
 representation or evaluation protocol you use.

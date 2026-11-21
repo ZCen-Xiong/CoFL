@@ -45,6 +45,7 @@ class PlanarWorld:
     obstacles: tuple[Box2D | Disc2D, ...]
     start_xy: tuple[float, float]
     goal_xy: tuple[float, float]
+    raster: object | None = None
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,8 @@ class CoupledCrossProxy:
         clearance = np.full(start.shape[:-1], np.inf)
         bounds = world.bounds
         for left, right, bottom, top, radius in parts:
+            if world.raster is not None:
+                clearance = np.minimum(clearance, world.raster.rectangle_clearance(left,right,bottom,top)-radius)
             for distance in (left - bounds.xmin - radius, bounds.xmax - right - radius,
                              bottom - bounds.ymin - radius, bounds.ymax - top - radius):
                 clearance = np.minimum(clearance, distance)

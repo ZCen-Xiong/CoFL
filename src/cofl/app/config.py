@@ -39,6 +39,10 @@ class StudioConfig(Contract):
     benchmarks: dict[ResourceId, FileResource] = Field(default_factory=dict)
     cofm_habitat_python: Path | None = None
     cofm_output: Path | None = None
+    cofm_point_clearance_m: float = Field(default=0.02, ge=0, le=1)
+    cofm_field_resolution_m: float = Field(default=0.025, gt=0, le=0.2)
+    cofm_safety_band_m: float = Field(default=0.02, ge=0, le=2)
+    cofm_safety_cost_weight: float = Field(default=5.0, ge=0, le=100)
 
     def resolve(self, base_dir: Path):
         config = self.model_copy(deep=True)

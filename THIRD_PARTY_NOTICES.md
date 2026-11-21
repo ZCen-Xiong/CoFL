@@ -28,6 +28,14 @@ upstream URLs and the corresponding npm package versions in `sources.json`.
 
 ## Model and dataset assets
 
+`src/cofl/models/vendor/dformer.py` adapts DFormer-Tiny from
+[VCIP-RGBD/DFormer](https://github.com/VCIP-RGBD/DFormer), commit
+`e3273009b759b578945483828ff315d560be94c9`, under its MIT license (copyright
+2023 VCIP-RGBD). The complete notice is retained in that source file. RGB and
+depth stems and fusion blocks come from upstream; framework wrappers use native
+PyTorch, and unused model variants and legacy checkpoint loaders are omitted.
+No upstream weights are bundled or automatically downloaded.
+
 SigLIP2 components, Matterport3D observations, R2R/RxR annotations and alignment
 sources are covered by the model/dataset repositories' own LICENSE and
 THIRD_PARTY_NOTICES files. Their terms are not replaced by the source-code

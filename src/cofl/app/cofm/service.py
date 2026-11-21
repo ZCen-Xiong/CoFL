@@ -7,7 +7,8 @@ This service adapts those capabilities to the Studio request/response contracts.
 from __future__ import annotations
 
 import base64
-from dataclasses import asdict, replace
+from dataclasses import replace
+from types import SimpleNamespace
 import io
 import json
 from pathlib import Path
@@ -19,27 +20,28 @@ import uuid
 import numpy as np
 
 from cofl.planning.configuration_field import (
-    Box2D, ConfigurationTeacher, CoupledCrossProxy, Disc2D, PlanarWorld,
+    Box2D, Disc2D, PlanarWorld,
 )
-from cofl.generation import obstacle_scene
-from .contracts import MDock, MFieldSlice, MObservation, MObstacle, MPair, MScene, MSceneSummary, MTeacher
+from cofl.generation import obstacle_scene, matterport_worker
+from cofl.planning.narrow import GroundRaster, narrow_profile
+from cofl.planning.point_field import PointTeacher
+from .contracts import MDock, MObservation, MObstacle, MPair, MScene, MSceneSummary, MTeacher
 
 
 class CofMService:
-    resolution = 0.1
-    body_clearance_m = 0.01  # Extra clearance from the whole body to an obstacle.
-    teacher_safety_weight = 0.0  # No additional preference for larger clearance.
-    teacher_safety_band_m = body_clearance_m
-    arrow_stride = 2  # Display spacing = resolution * stride = 0.2m.
+    resolution = 0.025
+    arrow_stride = 4  # Default display spacing: 0.025m * 4 = 0.1m.
     max_display_arrows = 4000
 
     def __init__(self, config):
         self.config = config
-        self.robot = CoupledCrossProxy(margin=self.body_clearance_m)
+        self.resolution = config.cofm_field_resolution_m
+        self.point_clearance_m = config.cofm_point_clearance_m
         root = Path(__file__).resolve().parents[4]
         self.habitat_python = config.cofm_habitat_python or root / ".habitat/cofm/bin/python"
         self.output = config.cofm_output or root / "artifacts/cof-m/studio-tasks"
         self.lock, self.render_lock = threading.RLock(), threading.Lock()
+        self.rasters = {}
         self.cache = {}  # At most two CPU graphs; no model or GPU state is retained.
 
     def _load(self, scene_id):
@@ -48,8 +50,17 @@ class CofMService:
             raise FileNotFoundError("Unknown scene")
         manifest = resource.path.parent / "scene.json"
         metadata = json.loads(manifest.read_text())
+        if metadata.get("geometry_profile") == "ground_navmesh_v1":
+            m=metadata["raster"]; cfg=SimpleNamespace(**metadata["config"])
+            key=(str(manifest), manifest.stat().st_mtime_ns)
+            if key not in self.rasters:
+                if len(self.rasters)>=2:self.rasters.pop(next(iter(self.rasters)))
+                self.rasters[key]=GroundRaster(np.load(manifest.parent/'free.npy',allow_pickle=False),m['resolution_m'],-cfg.width/2)
+            raster=self.rasters[key]
+            world=PlanarWorld(scene_id,Box2D(0,cfg.length,-cfg.width/2,cfg.width/2),(),(1,0),(cfg.length-1,0),raster)
+            return resource,metadata,cfg,world,[]
         if metadata.get("geometry_profile") != "vertical_extrusion_xy_v1":
-            raise ValueError("Select a generated vertical-extrusion cof-m scene")
+            raise ValueError("Select an imported Matterport floor or generated CoF-M scene")
         cfg = obstacle_scene.SceneConfig(**metadata["config"])
         cfg.validate()
         obstacle_scene.audit_obstacles(cfg, metadata["obstacles"])
@@ -80,158 +91,132 @@ class CofMService:
         return result
 
     def scene(self, scene_id):
-        resource, _, cfg, _, display = self._load(scene_id)
-        r = self.robot
-        return MScene(id=scene_id, label=resource.label or scene_id, length_m=cfg.length,
-                      width_m=cfg.width, height_m=cfg.camera_height, resolution_m=self.resolution,
-                      obstacles=display, habitat_available=self.habitat_python.is_file(), docking=dict(
-                          proxy="coupled-cross union over all q, fixed yaw=0",
-                          q_range_m=[-r.q_limit, r.q_limit],
-                          centerline_lengths_m=[2*(r.e0+r.q_limit)]*2,
-                          horizontal_width_m=2*r.horizontal_radius,
-                          vertical_width_m=2*r.vertical_radius,
-                          horizontal_span_m=2*(r.e0+r.q_limit+r.horizontal_radius),
-                          vertical_span_m=2*(r.e0+r.q_limit+r.vertical_radius),
-                          margin_m=r.margin,
-                      ))
+        resource, metadata, cfg, world, display = self._load(scene_id)
+        map_image=None
+        if world.raster is not None:
+            from PIL import Image
+            image=np.where(world.raster.free[::-1,:,None],np.array([241,244,239]),np.array([112,135,125])).astype(np.uint8)
+            buffer=io.BytesIO();Image.fromarray(image).save(buffer,format="PNG")
+            map_image="data:image/png;base64,"+base64.b64encode(buffer.getvalue()).decode()
+        return MScene(id=scene_id,label=resource.label or scene_id,length_m=cfg.length,
+            width_m=cfg.width,height_m=cfg.camera_height,resolution_m=self.resolution,
+            obstacles=display,map_image=map_image,source_kind='matterport' if world.raster is not None else 'procedural',
+            habitat_available=self.habitat_python.is_file(),docking={'proxy':'point', 'margin_m':self.point_clearance_m})
 
     def validate(self, scene_id, point):
-        _, _, _, world, _ = self._load(scene_id)
-        x, y = point
-        clearance = float(self.robot.swept_clearance(world, (x, y, -0.1), (x, y, 0.1)))
-        on_grid = np.allclose(np.asarray(point)/self.resolution,
-                             np.round(np.asarray(point)/self.resolution), atol=1e-8, rtol=0)
-        valid = clearance > self.robot.margin + 1e-10 and on_grid
-        reason = ("停泊净空通过：全部 q 形态均可容纳（固定朝向）" if valid else
-                  "请对齐 0.1m 网格" if not on_grid else
-                  "停泊净空不足：十字包络与障碍或规划边界冲突")
-        return MDock(point=point, valid=bool(valid), clearance_m=clearance, reason=reason)
+        teacher=self._graph(scene_id)
+        try:
+            index=teacher.locate(point)
+        except ValueError as error:
+            return MDock(point=point,valid=False,clearance_m=0,reason=str(error))
+        clearance=float(teacher.clearance[index])
+        valid=bool(teacher.free[index])
+        return MDock(point=point,valid=valid,clearance_m=clearance,
+            reason='质点净空通过' if valid else '质点位于障碍或净空带内')
 
     def _graph(self, scene_id):
-        resource, _, _, world, _ = self._load(scene_id)
-        path = resource.path.parent / "scene.json"
-        key = (scene_id, path.stat().st_mtime_ns, path.stat().st_size,
-               self.resolution, self.robot, self.teacher_safety_weight, self.teacher_safety_band_m)
+        resource,metadata,_,world,_=self._load(scene_id)
+        path=resource.path.parent/'scene.json'
+        if world.raster is not None and metadata['raster'].get('point_agent_radius_m',0)>0:
+            raise ValueError('旧场景 navmesh 已预先侵蚀，需用更新后的导入命令重新生成零半径质点场景')
+        key=(scene_id,path.stat().st_mtime_ns,self.resolution,self.point_clearance_m,
+             self.config.cofm_safety_band_m,self.config.cofm_safety_cost_weight)
         if key not in self.cache:
-            if len(self.cache) >= 2:
-                self.cache.pop(next(iter(self.cache)))
-            self.cache[key] = ConfigurationTeacher(
-                world, self.robot, resolution=self.resolution,
-                safety_weight=self.teacher_safety_weight, safety_band=self.teacher_safety_band_m,
-            )
+            if len(self.cache)>=2:self.cache.pop(next(iter(self.cache)))
+            self.cache[key]=PointTeacher(world,resolution=self.resolution,clearance_m=self.point_clearance_m,
+                safety_band_m=self.config.cofm_safety_band_m,
+                safety_weight=self.config.cofm_safety_cost_weight)
         return self.cache[key]
 
     def random_pair(self, scene_id, seed):
-        from scipy.sparse.csgraph import connected_components
-        with self.lock:
-            teacher = self._graph(scene_id)
-            xy = teacher.states[len(teacher.q)//2].copy()
-            low, high = xy.copy(), xy.copy()
-            low[..., 2], high[..., 2] = -0.1, 0.1
-            docking = self.robot.swept_clearance(teacher.world, low, high) > self.robot.margin + 1e-10
-            ids = np.arange(teacher.free.size).reshape(teacher.shape)[len(teacher.q)//2][docking]
-            candidates = xy[docking, :2]
-            if len(candidates) < 2:
-                raise ValueError("This scene has fewer than two valid docking points")
-            _, component = connected_components(teacher.graph, directed=False)
-            labels = component[ids]
-            rng = np.random.default_rng(seed)
-            for _ in range(200):
-                i = int(rng.integers(len(candidates)))
-                possible = np.flatnonzero((labels == labels[i]) &
-                                          (np.linalg.norm(candidates-candidates[i], axis=1) >= 3))
-                if len(possible):
-                    j = int(rng.choice(possible))
-                    if candidates[i, 0] > candidates[j, 0]:
-                        i, j = j, i  # Face the sampled task in the default +X camera direction.
-                    return MPair(start=self.validate(scene_id, tuple(candidates[i])),
-                                 goal=self.validate(scene_id, tuple(candidates[j])))
-            raise ValueError("No connected docking pair at least 3m apart was found")
+        raise ValueError('当前任务使用地图手动选择起点和终点')
 
     def teacher(self, body):
         with self.lock:
-            start, goal = self.validate(body.scene_id, body.start), self.validate(body.scene_id, body.goal)
-            if not start.valid or not goal.valid:
-                raise ValueError(f"起点：{start.reason}；终点：{goal.reason}")
-            if np.linalg.norm(np.asarray(body.start)-body.goal) < 0.2:
-                raise ValueError("起终点距离应至少为 0.2m")
-            teacher = self._graph(body.scene_id)
-            teacher.world = replace(teacher.world, start_xy=body.start, goal_xy=body.goal)
-            teacher.solve()
-            path = teacher.rollout()
-            field, reachable, _ = teacher.field()
-            slices = []
-            for i, q in enumerate(teacher.q):
-                selected = np.zeros(teacher.shape[1:], bool)
-                selected[::self.arrow_stride, ::self.arrow_stride] = True
-                selected &= reachable[i]
-                values = np.concatenate((teacher.states[i][selected, :2], field[i][selected]), axis=1)
-                if len(values) > self.max_display_arrows:
-                    # Keep coverage across the whole map, rather than cutting
-                    # off one side when the scene exceeds the display budget.
-                    indices = np.linspace(0, len(values)-1, self.max_display_arrows, dtype=int)
-                    values = values[indices]
-                slices.append(MFieldSlice(q_m=float(q), arrows=values.tolist()))
-            clearance = (float(self.robot.swept_clearance(teacher.world, path[:-1], path[1:]).min())
-                         if len(path) > 1 else None)
-            artifact_id = uuid.uuid4().hex
-            output = self.output / artifact_id
-            output.mkdir(parents=True)
-            teacher.save(output / "teacher.npz")
-            np.save(output / "path.npy", path, allow_pickle=False)
-            obstacle_scene.save_json(output / "task.json", dict(
-                format="cof_m_studio_teacher", version=1, source="geometry_teacher",
-                scene_id=body.scene_id, scene_manifest=str(self.config.scenes[body.scene_id].path.parent / "scene.json"),
-                start=body.start, goal=body.goal, height_m=self.scene(body.scene_id).height_m,
-                robot=asdict(self.robot), yaw_rad=0, resolution_m=self.resolution,
-                reachable=bool(len(path)), endpoint_q=0, morph_weight=teacher.morph_weight,
-                safety_weight=self.teacher_safety_weight, safety_band_m=self.teacher_safety_band_m,
-                scene_config=self._load(body.scene_id)[1]["config"],
-                scene_obstacles=self._load(body.scene_id)[1]["obstacles"],
-            ))
-            return MTeacher(reachable=bool(len(path)), resolution_m=self.resolution,
-                            path=path.tolist(), slices=slices, min_path_clearance_m=clearance,
-                            artifact_id=artifact_id, message=(
-                                "离散 teacher 路径可达；已检查整机扫掠碰撞" if len(path) else
-                                "停泊点有效，但此 0.1m 构型图中不可达；不将其标作 STOP"))
+            start,goal=self.validate(body.scene_id,body.start),self.validate(body.scene_id,body.goal)
+            if not start.valid or not goal.valid:raise ValueError(f'起点：{start.reason}；终点：{goal.reason}')
+            if np.linalg.norm(np.asarray(body.start)-body.goal)<self.resolution:
+                raise ValueError('起终点必须不同')
+            t=self._graph(body.scene_id)
+            t.world=replace(t.world,start_xy=body.start,goal_xy=body.goal);t.solve()
+            path=t.rollout();narrow=None
+            if t.world.raster is not None:
+                narrow=narrow_profile(path,t.world.raster,max_width=body.max_width_m,min_length=body.min_narrow_length_m)
+                if body.narrow_only is True and not narrow['accepted']:raise ValueError('路径未经过指定窄段')
+            field,reachable,_=t.field()
+            selected=np.zeros(t.shape,bool);selected[::self.arrow_stride,::self.arrow_stride]=True
+            selected &= reachable
+            arrows=np.concatenate((t.states[selected],field[selected]),axis=1)
+            if len(arrows)>self.max_display_arrows:arrows=arrows[np.linspace(0,len(arrows)-1,self.max_display_arrows,dtype=int)]
+            artifact_id=uuid.uuid4().hex;output=self.output/artifact_id;output.mkdir(parents=True)
+            t.save(output/'teacher.npz');np.save(output/'path.npy',path,allow_pickle=False)
+            obstacle_scene.save_json(output/'task.json',dict(format='cofm_point_task_v1',scene_id=body.scene_id,
+                scene_manifest=str(self.config.scenes[body.scene_id].path.parent/'scene.json'),
+                start=body.start,goal=body.goal,height_m=self.scene(body.scene_id).height_m,
+                clearance_m=self.point_clearance_m,resolution_m=self.resolution,narrow=narrow,
+                field_source='cofl_s_geodesic_potential_kernels'))
+            return MTeacher(reachable=bool(len(path)),resolution_m=self.resolution,path=path.tolist(),
+                arrows=arrows.tolist(),min_path_clearance_m=float(t.clearance[reachable].min()) if reachable.any() else None,
+                artifact_id=artifact_id,narrow=narrow,message='CoFL-S 质点测地势场；未执行整机或 q 约束')
 
     def observation(self, body):
         from PIL import Image
         resource, metadata, cfg, world, _ = self._load(body.scene_id)
-        state = [*body.point, body.q_m]
-        if float(self.robot.clearance(world, state)) <= self.robot.margin:
-            raise ValueError("当前构型与障碍或规划边界冲突")
+        if not self.validate(body.scene_id,body.point).valid:
+            raise ValueError('观测位置不满足质点净空')
         if not self.habitat_python.is_file():
             raise RuntimeError("Habitat interpreter unavailable; configure cofm_habitat_python")
         with self.render_lock, tempfile.TemporaryDirectory(prefix="cofm-observation-") as directory:
-            output = Path(directory)
-            (output / "obstacles.glb").symlink_to(resource.path)
-            obstacle_scene.save_json(output / "obstacles.stage_config.json", dict(
-                render_asset="obstacles.glb", collision_asset="obstacles.glb",
-                up=[0, 1, 0], front=[0, 0, -1], units_to_meters=1.0,
-            ))
-            position = np.asarray([*body.point, cfg.camera_height])
-            metadata["frames"] = [dict(index=0, position_planning=position.tolist(),
-                position_habitat=(obstacle_scene.PLANNING_TO_HABITAT @ position).tolist(),
-                rotation_xyzw_habitat=[0, 0, 0, 1])]
-            metadata["depth_rendered"] = False
-            obstacle_scene.save_json(output / "scene.json", metadata)
-            try:
-                result = subprocess.run([str(self.habitat_python.absolute()),
-                    str(Path(obstacle_scene.__file__).resolve()), "--output", str(output),
-                    "--render-existing"], capture_output=True, text=True, timeout=60)
-            except subprocess.TimeoutExpired as error:
-                raise RuntimeError("Habitat depth rendering timed out") from error
-            if result.returncode:
-                raise RuntimeError("Habitat depth rendering failed; verify EGL/GPU access. " + result.stderr[-600:])
+            output=Path(directory)
+            if world.raster is not None:
+                m=metadata['raster']
+                position=np.asarray([*body.point,cfg.camera_height])
+                poses=[dict(position_habitat=[-(body.point[1]+m['origin_y']),m['floor_y']+cfg.camera_height,-(body.point[0]+m['origin_x'])])]
+                (output/'poses.json').write_text(json.dumps(poses))
+                cmd=[str(self.habitat_python.absolute()),str(Path(matterport_worker.__file__).resolve()),'--mode','render',
+                     '--scene',metadata['source_scene'],'--poses',str(output/'poses.json'),'--output',str(output)]
+                if metadata.get('scene_dataset'):cmd.extend(['--scene-dataset',metadata['scene_dataset']])
+                try:
+                    result=subprocess.run(cmd,capture_output=True,text=True,timeout=60)
+                except subprocess.TimeoutExpired as error:
+                    raise RuntimeError('Habitat RGB-D rendering timed out') from error
+                if result.returncode:raise RuntimeError('Habitat RGB-D failed: '+result.stderr[-600:])
+                (output/'depth').mkdir();(output/'valid').mkdir();(output/'rgb').mkdir()
+                (output/'000000-depth.npy').rename(output/'depth/000000.npy')
+                (output/'000000-valid.npy').rename(output/'valid/000000.npy')
+                (output/'000000-rgb.png').rename(output/'rgb/000000.png')
+            else:
+                (output / "obstacles.glb").symlink_to(resource.path)
+                obstacle_scene.save_json(output / "obstacles.stage_config.json", dict(
+                    render_asset="obstacles.glb", collision_asset="obstacles.glb",
+                    up=[0, 1, 0], front=[0, 0, -1], units_to_meters=1.0,
+                ))
+                position = np.asarray([*body.point, cfg.camera_height])
+                metadata["frames"] = [dict(index=0, position_planning=position.tolist(),
+                    position_habitat=(obstacle_scene.PLANNING_TO_HABITAT @ position).tolist(),
+                    rotation_xyzw_habitat=[0, 0, 0, 1])]
+                metadata["depth_rendered"] = False
+                obstacle_scene.save_json(output / "scene.json", metadata)
+                try:
+                    result = subprocess.run([str(self.habitat_python.absolute()),
+                        str(Path(obstacle_scene.__file__).resolve()), "--output", str(output),
+                        "--render-existing"], capture_output=True, text=True, timeout=60)
+                except subprocess.TimeoutExpired as error:
+                    raise RuntimeError("Habitat depth rendering timed out") from error
+                if result.returncode:
+                    raise RuntimeError("Habitat depth rendering failed; verify EGL/GPU access. " + result.stderr[-600:])
+
             depth = np.load(output / "depth/000000.npy", allow_pickle=False)
             valid = np.load(output / "valid/000000.npy", allow_pickle=False)
-            # A viewing transform only; no RGB sensor or learned RGB appearance.
+            # Metric depth remains separate from the grayscale viewing transform.
             image = np.where(valid, 30 + 225*(1-np.clip(depth/cfg.far, 0, 1)), 0).astype(np.uint8)
             buffer = io.BytesIO()
             Image.fromarray(image).save(buffer, format="PNG")
-            return MObservation(image="data:image/png;base64,"+base64.b64encode(buffer.getvalue()).decode(),
-                                position=tuple(position), q_m=body.q_m,
+            rgb_image=None
+            if (output/'rgb/000000.png').is_file():
+                rgb_image='data:image/png;base64,'+base64.b64encode((output/'rgb/000000.png').read_bytes()).decode()
+            return MObservation(rgb_image=rgb_image,image="data:image/png;base64,"+base64.b64encode(buffer.getvalue()).decode(),
+                                position=tuple(position),
                                 valid_fraction=float(valid.mean()), far_m=cfg.far)
 
 

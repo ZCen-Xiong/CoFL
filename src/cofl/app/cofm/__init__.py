@@ -2,7 +2,7 @@
 
 from .contracts import (
     MObstacle, MSceneSummary, MScene, MPointRequest, MDock, MRandomRequest,
-    MPair, MTaskRequest, MFieldSlice, MTeacher, MObservationRequest, MObservation,
+    MPair, MTaskRequest, MTeacher, MObservationRequest, MObservation,
 )
 from .service import CofMService
 from .router import create_router
@@ -16,7 +16,6 @@ __all__ = [
     "MRandomRequest",
     "MPair",
     "MTaskRequest",
-    "MFieldSlice",
     "MTeacher",
     "MObservationRequest",
     "MObservation",

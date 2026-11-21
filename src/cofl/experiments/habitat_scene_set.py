@@ -83,18 +83,16 @@ def build(output: Path, habitat_python: Path, *, frames=16):
         print(f"Rendered {entry['id']}: {entry['frames']} depth frames", flush=True)
     manifest.update(status="complete", total_frames=sum(s["frames"] for s in scenes))
     obstacle_scene.save_json(output / "manifest.json", manifest)
-    (output / "README.md").write_text(
-        "# cof-m Habitat scene/observation set\n\n"
+    # Artifact summaries use plain text; maintained project docs have two entry points.
+    (output / "README.txt").write_text(
+        "CoF-M Habitat scene/observation set\n\n"
         "4 train scenes, 2 val scenes; split by scene, no shared seeds. "
         "5m x 4m scenes; full-height vertical obstacles; fixed planning height z=1.2m.\n\n"
-        "Contains GLB, metric depth, valid masks and poses. "
+        "Contains GLB, aligned RGB-D, valid masks and poses. "
         "No flow-field supervision or trained model is included.\n\n"
-        "Open the existing CoFL Studio with:\n\n```bash\n"
-        f".venv/bin/python -m cofl app --config {output / 'studio.yaml'} "
-        "--no-browser --port 8788\n```\n\n"
-        "Visit http://127.0.0.1:8788, choose cof-m → cof-m Playground, "
-        "then choose a scene. The new mode validates docking points and generates a teacher; "
-        "teacher artifacts are separate from this observation set.\n",
+        f"Studio catalog: {output / 'studio.yaml'}\n"
+        "User workflow: docs/cof-m-guide.md\n"
+        "Repository context: docs/repository-context.md\n",
         encoding="utf-8",
     )
     return manifest

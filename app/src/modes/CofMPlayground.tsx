@@ -10,28 +10,8 @@ type Observation = components["schemas"]["MObservation"];
 type Summary = components["schemas"]["MSceneSummary"];
 type XY = [number, number];
 
-function Cross({
-  point,
-  color,
-  allShapes = false,
-  q = 0,
-}: {
-  point: number[];
-  color: string;
-  allShapes?: boolean;
-  q?: number;
-}) {
-  const x = point[0],
-    y = point[1];
-  const ex = allShapes ? 0.4 : 0.3 + q;
-  const ey = allShapes ? 0.4 : 0.3 - q;
-  return (
-    <g stroke={color} strokeLinecap="round" opacity={allShapes ? 0.65 : 1}>
-      <line x1={x - ex} x2={x + ex} y1={y} y2={y} strokeWidth={0.2} />
-      <line x1={x} x2={x} y1={y - ey} y2={y + ey} strokeWidth={0.2} />
-      <circle cx={x} cy={y} r={0.10} fill={color} stroke="none" />
-    </g>
-  );
+function Point({ point, color }: { point: number[]; color: string }) {
+  return <circle cx={point[0]} cy={point[1]} r={0.06} fill={color} />;
 }
 
 export function CofMPlayground() {
@@ -45,11 +25,11 @@ export function CofMPlayground() {
   const [observation, setObservation] = useState<Observation | null>(null);
   const [error, setError] = useState("");
   const [depthError, setDepthError] = useState("");
+  const [narrowOnly, setNarrowOnly] = useState<boolean | null>(null);
+  const [cameraView, setCameraView] = useState<"rgb" | "depth">("rgb");
   const [busy, setBusy] = useState(false);
-  const [slice, setSlice] = useState(4);
   const [cursor, setCursor] = useState(0);
   const revision = useRef(0);
-  const seed = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -68,15 +48,14 @@ export function CofMPlayground() {
     };
   }, []);
 
-  async function renderDepth(
+  async function renderObservation(
     id: string,
     point: number[],
-    q: number,
     version: number,
   ) {
     try {
       const { data, error } = await api.POST("/api/v1/cofm/observation", {
-        body: { scene_id: id, point: point as XY, q_m: q },
+        body: { scene_id: id, point: point as XY },
       });
       if (error || !data) throw apiError(error);
       if (version === revision.current) {
@@ -88,54 +67,43 @@ export function CofMPlayground() {
     }
   }
 
-  async function calculate(id: string, a: Dock, b: Dock, version: number) {
+  async function calculate(
+    id: string,
+    a: Dock,
+    b: Dock,
+    version: number,
+    narrow = narrowOnly,
+  ) {
     if (!a.valid || !b.valid) return;
     await Promise.all([
       (async () => {
         try {
           const { data, error } = await api.POST("/api/v1/cofm/teacher", {
-            body: { scene_id: id, start: a.point, goal: b.point },
+            body: {
+              scene_id: id,
+              start: a.point,
+              goal: b.point,
+              narrow_only: narrow,
+            },
           });
           if (error || !data) throw apiError(error);
           if (version === revision.current) {
             setTeacher(data as Teacher);
             setCursor(0);
-            setSlice(4);
           }
         } catch (e) {
           if (version === revision.current) setError((e as Error).message);
         }
       })(),
-      renderDepth(id, a.point, 0, version),
+      renderObservation(id, a.point, version),
     ]);
-  }
-
-  async function randomize(id = sceneId, version = ++revision.current) {
-    setBusy(true);
-    setError("");
-    setDepthError("");
-    setTeacher(null);
-    setObservation(null);
-    try {
-      const { data, error } = await api.POST("/api/v1/cofm/sample", {
-        body: { scene_id: id, seed: seed.current++ },
-      });
-      if (error || !data) throw apiError(error);
-      if (version !== revision.current) return;
-      setStart(data.start as Dock);
-      setGoal(data.goal as Dock);
-      await calculate(id, data.start as Dock, data.goal as Dock, version);
-    } catch (e) {
-      if (version === revision.current) setError((e as Error).message);
-    } finally {
-      if (version === revision.current) setBusy(false);
-    }
   }
 
   useEffect(() => {
     if (!sceneId) return;
     const version = ++revision.current;
     setScene(null);
+    setNarrowOnly(null);
     setStart(null);
     setGoal(null);
     setTeacher(null);
@@ -154,7 +122,7 @@ export function CofMPlayground() {
         if (error || !data) throw apiError(error);
         if (version !== revision.current) return;
         setScene(data as Scene);
-        await randomize(sceneId, version);
+        setBusy(false);
       } catch (e) {
         if (version === revision.current) {
           setError((e as Error).message);
@@ -183,7 +151,7 @@ export function CofMPlayground() {
       else setGoal(data as Dock);
       if (!data.valid) setError(data.reason);
       else if (target === "start")
-        await renderDepth(sceneId, data.point, 0, version);
+        await renderObservation(sceneId, data.point, version);
     } catch (e) {
       if (version === revision.current) setError((e as Error).message);
     } finally {
@@ -191,9 +159,8 @@ export function CofMPlayground() {
     }
   }
 
-  const selected = teacher?.path[cursor] ?? [...(start?.point ?? [0, 0]), 0];
-  const field = teacher?.slices[slice]?.arrows ?? [];
-  const qSlice = teacher?.slices[slice]?.q_m ?? 0;
+  const selected = teacher?.path[cursor] ?? start?.point ?? [0, 0];
+  const field = teacher?.arrows ?? [];
   const local = field.filter(([x, y]) => {
     const dx = x - selected[0],
       dy = y - selected[1];
@@ -201,17 +168,16 @@ export function CofMPlayground() {
   });
   const staleDepth =
     observation &&
-    (Math.hypot(
+    Math.hypot(
       observation.position[0] - selected[0],
       observation.position[1] - selected[1],
-    ) > 0.01 ||
-      Math.abs(observation.q_m - selected[2]) > 0.001);
+    ) > 0.01;
 
   return (
     <main className="cofm-workspace">
       <aside className="cofm-controls">
         <div className="control-section">
-          <div className="section-label">cof-m · DEPTH ONLY</div>
+          <div className="section-label">cof-m · RGB-D · 无语言</div>
           <Select.Root value={sceneId} onValueChange={setSceneId}>
             <Select.Trigger
               aria-label="cof-m scene"
@@ -235,12 +201,28 @@ export function CofMPlayground() {
             固定高度 {scene?.height_m ?? 1.2}m · XOY 平面 · 朝向 +X
           </Text>
           <Badge color="teal">几何 teacher · 未使用训练权重</Badge>
+          {scene?.source_kind === "matterport" && (
+            <Text as="p" size="2">
+              Matterport 地面占据近似 · 固定高度平飞
+            </Text>
+          )}
         </div>
         <div className="control-section">
-          <div className="section-label">起点与停泊目标</div>
-          <Button disabled={busy || !scene} onClick={() => void randomize()}>
-            随机生成可达两点
-          </Button>
+          <div className="section-label">手动起点与终点</div>
+          {scene?.source_kind === "matterport" && (
+            <label>
+              <input
+                type="checkbox"
+                checked={narrowOnly ?? false}
+                disabled={busy}
+                onChange={(e) => {
+                  setNarrowOnly(e.target.checked);
+                  setTeacher(null);
+                }}
+              />
+              仅接受包含窄段的路径（宽≤1.1m，连续≥0.3m）
+            </label>
+          )}
           <Flex gap="2" mt="3">
             <Button
               variant={target === "start" ? "solid" : "soft"}
@@ -256,7 +238,7 @@ export function CofMPlayground() {
             </Button>
           </Flex>
           <Text as="p" size="2">
-            点击下方选点地图，对齐 0.1m 网格并校验。
+            点击下方地图，按场景分辨率对齐并检查质点净空。
           </Text>
           {(
             [
@@ -268,11 +250,11 @@ export function CofMPlayground() {
               <strong>
                 {label}{" "}
                 {dock
-                  ? `(${dock.point.map((n) => n.toFixed(1)).join(", ")})m`
+                  ? `(${dock.point.map((n) => n.toFixed(3)).join(", ")})m`
                   : "未选择"}
               </strong>
               <Badge color={dock?.valid ? "green" : "red"}>
-                {dock?.valid ? "全形态停泊通过" : "未通过"}
+                {dock?.valid ? "质点净空通过" : "未通过"}
               </Badge>
               {dock && (
                 <small>最小净空 {(dock.clearance_m * 100).toFixed(1)}cm</small>
@@ -293,21 +275,14 @@ export function CofMPlayground() {
               });
             }}
           >
-            生成 teacher 与第一人称深度
+            生成 teacher 与第一人称 RGB-D
           </Button>
         </div>
         <div className="control-section">
-          <div className="section-label">停泊包络</div>
+          <div className="section-label">质点向量场 F(x,y)</div>
           <Text as="p" size="2">
-            全部 q∈[−0.10,+0.10]m 的十字包络：
-          </Text>
-          <Text as="p" size="2">
-            初始横纵外轮廓各长 80cm，面宽恒定 20cm。横长 80+200q cm，纵长
-            80−200q cm（q 单位为米），各在 60–100cm 内对称伸缩，总长恒为 160cm。
-            停泊位置检查全部形态的并集：横纵各跨 100cm，另留 1cm 裕度。
-          </Text>
-          <Text as="p" size="2">
-            检查整块胶囊十字与障碍及规划边界。保证代理模型的全部伸缩形态，不包含任意旋转姿态。
+            墙面净空 {Number(scene?.docking.margin_m ?? 0.02) * 100}cm。
+            不按十字整机膨胀障碍，不使用 q 切片；COG 附近流线由后续阶段提取。
           </Text>
         </div>
       </aside>
@@ -315,7 +290,7 @@ export function CofMPlayground() {
         {busy && (
           <Callout.Root>
             <Callout.Text>
-              正在检查停泊、求解 teacher 或渲染 Habitat 深度…
+              正在检查质点净空、求解 teacher 或渲染 Habitat RGB-D…
             </Callout.Text>
           </Callout.Root>
         )}
@@ -326,23 +301,42 @@ export function CofMPlayground() {
         )}
         <div className="cofm-observations">
           <section className="cofm-panel">
-            <div className="section-label">第一人称 · HABITAT DEPTH</div>
+            <div className="section-label">第一人称 · HABITAT RGB-D</div>
+            <Flex gap="2" mb="3">
+              <Button
+                size="1"
+                variant={cameraView === "rgb" ? "solid" : "soft"}
+                onClick={() => setCameraView("rgb")}
+              >
+                RGB
+              </Button>
+              <Button
+                size="1"
+                variant={cameraView === "depth" ? "solid" : "soft"}
+                onClick={() => setCameraView("depth")}
+              >
+                深度
+              </Button>
+            </Flex>
             {observation ? (
               <img
                 className="cofm-depth"
-                src={observation.image}
-                alt="Habitat first-person depth at fixed flight height"
+                src={
+                  cameraView === "rgb" && observation.rgb_image
+                    ? observation.rgb_image
+                    : observation.image
+                }
+                alt={`Habitat first-person ${cameraView} at fixed flight height`}
               />
             ) : (
               <div className="cofm-placeholder">
-                选择有效起点后采集单通道深度
+                选择有效起点后采集对齐的 RGB-D
               </div>
             )}
             {observation && (
               <Text as="p" size="2">
                 相机 ({observation.position.map((n) => n.toFixed(2)).join(", ")}
-                )m，q={observation.q_m.toFixed(3)}m；有效深度{" "}
-                {(observation.valid_fraction * 100).toFixed(1)}
+                )m；有效深度 {(observation.valid_fraction * 100).toFixed(1)}
                 %。亮=近，暗=远，黑=无效。
               </Text>
             )}
@@ -353,7 +347,7 @@ export function CofMPlayground() {
             )}
             {staleDepth && (
               <Text as="p" color="amber" size="2">
-                已更改路径构型；点击下方按钮更新深度。
+                已更改路径位置；点击下方按钮更新 RGB-D。
               </Text>
             )}
             <Button
@@ -363,17 +357,16 @@ export function CofMPlayground() {
               onClick={() => {
                 const version = ++revision.current;
                 setBusy(true);
-                void renderDepth(
+                void renderObservation(
                   sceneId,
                   selected.slice(0, 2),
-                  selected[2],
                   version,
                 ).finally(() => {
                   if (version === revision.current) setBusy(false);
                 });
               }}
             >
-              更新当前构型深度
+              更新当前位置 RGB-D
             </Button>
           </section>
           <section className="cofm-panel">
@@ -389,7 +382,7 @@ export function CofMPlayground() {
                 stroke="#a5bcb1"
                 strokeWidth=".025"
               />
-              {local.map(([x, y, fx, fy, fq], i) =>
+              {local.map(([x, y, fx, fy], i) =>
                 Math.hypot(fx, fy) > 0 ? (
                   <line
                     key={i}
@@ -401,18 +394,9 @@ export function CofMPlayground() {
                     strokeWidth=".035"
                     markerEnd="url(#cofm-local-arrow)"
                   />
-                ) : (
-                  fq !== 0 && (
-                    <circle
-                      key={i}
-                      cx={-(y - selected[1])}
-                      cy={-(x - selected[0])}
-                      r=".045"
-                      fill="#c47b24"
-                    />
-                  )
-                ),
+                ) : null,
               )}
+
               <defs>
                 <marker
                   id="cofm-local-arrow"
@@ -437,20 +421,9 @@ export function CofMPlayground() {
               </text>
             </svg>
             <Text as="p" size="2">
-              以当前构型为原点的 XOY 局部图，不是地面投影。橙点=原地变形；q
-              切片={qSlice.toFixed(3)}m。
+              以当前位置为原点的质点二维场，复用 CoFL-S 测地势场算法，无 q
+              分量。
             </Text>
-            <label>
-              显示 q 切片{" "}
-              <input
-                aria-label="Teacher q slice"
-                type="range"
-                min="0"
-                max="8"
-                value={slice}
-                onChange={(e) => setSlice(Number(e.target.value))}
-              />
-            </label>
           </section>
         </div>
         <section className="cofm-panel">
@@ -480,8 +453,9 @@ export function CofMPlayground() {
                 p.y = e.clientY;
                 const xy = p.matrixTransform(matrix.inverse());
                 void choose([
-                  Math.round(xy.x * 10) / 10,
-                  Math.round((scene.width_m / 2 - xy.y) * 10) / 10,
+                  Math.round(xy.x / scene.resolution_m) * scene.resolution_m,
+                  Math.round((scene.width_m / 2 - xy.y) / scene.resolution_m) *
+                    scene.resolution_m,
                 ]);
               }}
             >
@@ -490,6 +464,16 @@ export function CofMPlayground() {
                 height={scene.width_m}
                 fill="#f1f4ef"
               />
+              {scene.map_image && (
+                <image
+                  href={scene.map_image}
+                  x="0"
+                  y="0"
+                  width={scene.length_m}
+                  height={scene.width_m}
+                  preserveAspectRatio="none"
+                />
+              )}
               {scene.obstacles.map((o, i) =>
                 o.kind === "circle" ? (
                   <circle
@@ -543,13 +527,12 @@ export function CofMPlayground() {
                 ([label, dock, color]) =>
                   dock && (
                     <g key={label}>
-                      <Cross
+                      <Point
                         point={[
                           dock.point[0],
                           scene.width_m / 2 - dock.point[1],
                         ]}
                         color={dock.valid ? color : "#d33c39"}
-                        allShapes
                       />
                       <text
                         x={dock.point[0]}
@@ -564,9 +547,8 @@ export function CofMPlayground() {
                   ),
               )}
               {teacher?.path.length ? (
-                <Cross
+                <Point
                   point={[selected[0], scene.width_m / 2 - selected[1]]}
-                  q={selected[2]}
                   color="#244e70"
                 />
               ) : null}
@@ -574,20 +556,21 @@ export function CofMPlayground() {
           )}
           <Text as="p" size="2">
             横轴 x：0–{scene?.length_m}m；纵轴 y：−{(scene?.width_m ?? 10) / 2}{" "}
-            至 +{(scene?.width_m ?? 10) / 2}m。S/G
-            十字显示全形态停泊包络。所有标签位于 z={scene?.height_m ?? 1.2}m。
+            至 +{(scene?.width_m ?? 10) / 2}m。S/G 为质点端点。所有标签位于 z=
+            {scene?.height_m ?? 1.2}m。
           </Text>
           {teacher && (
             <>
               <Text as="p" size="2">
-                {teacher.message}。路径 {teacher.path.length} 个构型。
+                {teacher.message}。路径 {teacher.path.length} 个位置。
+                {teacher.narrow &&
+                  `窄段 ${Number(teacher.narrow.narrow_length_m).toFixed(2)}m；窄段附近可采集 ${(teacher.narrow.selected_indices as number[]).length} 帧。`}
                 {teacher.min_path_clearance_m != null &&
-                  `扫掠净空下界 ${(teacher.min_path_clearance_m * 100).toFixed(1)}cm。`}
+                  `可达网格最小净空 ${(teacher.min_path_clearance_m * 100).toFixed(1)}cm。`}
               </Text>
               {teacher.path.length > 0 && (
                 <label>
-                  浏览 teacher 路径：{cursor + 1}/{teacher.path.length}，q=
-                  {selected[2].toFixed(3)}m
+                  浏览质点路径：{cursor + 1}/{teacher.path.length}
                   <input
                     aria-label="Teacher path position"
                     type="range"
@@ -597,15 +580,14 @@ export function CofMPlayground() {
                     onChange={(e) => {
                       const i = Number(e.target.value);
                       setCursor(i);
-                      setSlice(Math.round((teacher.path[i][2] + 0.1) / 0.025));
                     }}
                   />
                 </label>
               )}
               <Text as="p" size="1">
                 Teacher 已保存：studio-tasks/{teacher.artifact_id}
-                /teacher.npz。这是完整几何生成的全局监督，非 DFormer
-                预测；不代表单帧深度足以推断遮挡后的路径。
+                /teacher.npz。这是完整几何生成的全局监督，非 DFormer 预测；单帧
+                RGB-D 无法保证推断遮挡后的路径。
               </Text>
               <a
                 href={`/api/v1/cofm/tasks/${teacher.artifact_id}/teacher`}

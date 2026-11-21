@@ -30,6 +30,8 @@ class MScene(Contract):
     obstacles: list[MObstacle]
     docking: dict[str, float | list[float] | str]
     habitat_available: bool
+    map_image: str | None = None
+    source_kind: Literal['procedural','matterport'] = 'procedural'
 
 
 class MPointRequest(Contract):
@@ -58,35 +60,32 @@ class MTaskRequest(Contract):
     scene_id: ResourceId
     start: Point2
     goal: Point2
-
-
-class MFieldSlice(Contract):
-    q_m: float
-    # x,y,Fx,Fy,Fq; these are configuration tangents, not physical velocities.
-    arrows: list[tuple[float, float, float, float, float]]
+    narrow_only: bool | None = None
+    max_width_m: Finite = Field(default=1.1,gt=0,le=3)
+    min_narrow_length_m: Finite = Field(default=.3,gt=0,le=5)
 
 
 class MTeacher(Contract):
     source: Literal["geometry_teacher"] = "geometry_teacher"
     reachable: bool
     resolution_m: float
-    path: list[tuple[float, float, float]]
-    slices: list[MFieldSlice]
+    path: list[tuple[float, float]]
+    arrows: list[tuple[float, float, float, float]]
     min_path_clearance_m: float | None
     artifact_id: str
     message: str
+    narrow: dict | None = None
 
 
 class MObservationRequest(Contract):
     scene_id: ResourceId
     point: Point2
-    q_m: Finite = Field(default=0, ge=-0.1, le=0.1)
 
 
 class MObservation(Contract):
     image: str
+    rgb_image: str | None = None
     position: tuple[float, float, float]
-    q_m: float
     heading_deg: float = 0
     valid_fraction: float
     far_m: float

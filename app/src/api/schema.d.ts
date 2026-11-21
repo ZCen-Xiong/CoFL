@@ -662,31 +662,18 @@ export interface components {
             /** Reason */
             reason: string;
         };
-        /** MFieldSlice */
-        MFieldSlice: {
-            /** Q M */
-            q_m: number;
-            /** Arrows */
-            arrows: [
-                number,
-                number,
-                number,
-                number,
-                number
-            ][];
-        };
         /** MObservation */
         MObservation: {
             /** Image */
             image: string;
+            /** Rgb Image */
+            rgb_image?: string | null;
             /** Position */
             position: [
                 number,
                 number,
                 number
             ];
-            /** Q M */
-            q_m: number;
             /**
              * Heading Deg
              * @default 0
@@ -712,11 +699,6 @@ export interface components {
                 number,
                 number
             ];
-            /**
-             * Q M
-             * @default 0
-             */
-            q_m?: number;
         };
         /** MObstacle */
         MObstacle: {
@@ -794,6 +776,14 @@ export interface components {
             };
             /** Habitat Available */
             habitat_available: boolean;
+            /** Map Image */
+            map_image?: string | null;
+            /**
+             * Source Kind
+             * @default procedural
+             * @enum {string}
+             */
+            source_kind?: "procedural" | "matterport";
         };
         /** MSceneSummary */
         MSceneSummary: {
@@ -816,6 +806,18 @@ export interface components {
                 number,
                 number
             ];
+            /** Narrow Only */
+            narrow_only?: boolean | null;
+            /**
+             * Max Width M
+             * @default 1.1
+             */
+            max_width_m?: number;
+            /**
+             * Min Narrow Length M
+             * @default 0.3
+             */
+            min_narrow_length_m?: number;
         };
         /** MTeacher */
         MTeacher: {
@@ -832,17 +834,25 @@ export interface components {
             /** Path */
             path: [
                 number,
+                number
+            ][];
+            /** Arrows */
+            arrows: [
+                number,
+                number,
                 number,
                 number
             ][];
-            /** Slices */
-            slices: components["schemas"]["MFieldSlice"][];
             /** Min Path Clearance M */
             min_path_clearance_m: number | null;
             /** Artifact Id */
             artifact_id: string;
             /** Message */
             message: string;
+            /** Narrow */
+            narrow?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** ModeDescriptor */
         ModeDescriptor: {
