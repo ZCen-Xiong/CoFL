@@ -10,15 +10,12 @@ import numpy as np
 from cofl.app.config import load_config
 from cofl.app.cofm import CofMService, MTaskRequest
 from cofl.generation import matterport_worker
-from cofl.generation.sector.fields.sector_gt import (
-    _build_visible_bev_mask_3d, _compose_potential, _compute_obstacle_distance,
-    _compute_bev_escape_direction, _compute_bev_velocity_field,
-)
+from cofl.generation.sector.fields.sector_gt import _build_visible_bev_mask_3d
 
 
 def local_labels(labels, state, *, heading=0., radius=5., half_fov=np.pi/4,
                  depth=None, height=.2):
-    """CoFL-S local potential/velocity kernels and depth-visibility loss mask."""
+    """Sample one fixed world teacher; visibility changes supervision, never geometry."""
     x, y = np.meshgrid(labels['x'], labels['y'])
     wx, wy = x-state[0], y-state[1]
     c, s = np.cos(heading), np.sin(heading)
@@ -33,17 +30,14 @@ def local_labels(labels, state, *, heading=0., radius=5., half_fov=np.pi/4,
             np.array([0,height,0]),np.array([1,0,0]),np.array([0,0,1]),
             2*half_fov,radius,depth,depth_visibility_tol_m=.1)
     mask = (distance <= radius) & (abs(angle) <= half_fov) & reachable
-    potential=_compose_potential(reachable,labels['value'],_compute_obstacle_distance(~reachable))
-    raw=_compute_bev_velocity_field(potential.T,reachable.T,labels['geodesic_m'].T,
-        _compute_bev_escape_direction(reachable.T),v_norm=5.)
-    grid=raw.transpose(2,1,0).astype(np.float32)
-    grid[labels['terminal']]=0
-    field = grid[mask].copy()
+    field = labels['field'][mask].copy()
     fx, fy = field[:, 0].copy(), field[:, 1].copy()
     field[:, 0], field[:, 1] = c*fx+s*fy, -s*fx+c*fy
     return dict(query=np.stack((angle[mask]/half_fov, distance[mask]/radius), -1).astype(np.float32),
                 field=field,
-                terminal=labels['terminal'][mask])
+                terminal=labels['terminal'][mask],
+                world_xy=np.stack((x[mask],y[mask]),-1).astype(np.float32),
+                world_index=np.flatnonzero(mask).astype(np.int64))
 
 
 def path_heading(path, index):
@@ -71,7 +65,7 @@ def collect(config_path, task_path, output, *, max_width=1.1, min_length=.3, max
     tasks = json.loads(Path(task_path).read_text())
     if isinstance(tasks, dict):
         tasks = tasks.get('tasks', [tasks])
-    manifest = dict(format='cofm_point_rgbd_routes_v1', clearance_m=service.point_clearance_m, camera=dict(width=320, height=240,
+    manifest = dict(format='cofm_point_rgbd_routes_v2', teacher_visibility='supervision_mask_only', clearance_m=service.point_clearance_m, camera=dict(width=320, height=240,
                     hfov_deg=90, near_m=.05, far_m=15, heading=camera_heading),
                     query='[theta/(pi/4), range_m/5]', field='[Fx,Fy] CoFL-S canonical field',
                     accepted=[], rejected=[])

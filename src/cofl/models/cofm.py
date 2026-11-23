@@ -27,14 +27,13 @@ class CofMPolicy(nn.Module):
         self.backbone = DFormer_Tiny(drop_path_rate=0)
         self.projection = nn.Conv2d(128, c.d_model, 1)
         self.position = nn.Linear(2, c.d_model)
-        self.condition = nn.Linear(3, c.d_model)  # goal XY and observed shape q
+        self.condition = nn.Linear(2, c.d_model)  # goal XY; geometry is point-only
         self.norm = nn.LayerNorm(c.d_model)
         self.decoder = CoFLSFieldDecoder(d_model=c.d_model, num_heads=8, num_layers=2, dropout=0)
-        self.shape_head = nn.Sequential(nn.Linear(c.d_model+2, 128), nn.GELU(), nn.Linear(128, 1), nn.Tanh())
         self.register_buffer('rgb_mean', torch.tensor([.485,.456,.406])[None,:,None,None])
         self.register_buffer('rgb_std', torch.tensor([.229,.224,.225])[None,:,None,None])
 
-    def encode(self, rgb, depth, goal_ego, valid_mask=None, q_m=None):
+    def encode(self, rgb, depth, goal_ego, valid_mask=None):
         if rgb.ndim != 4 or rgb.shape[1] != 3 or depth.shape != (rgb.shape[0],1,*rgb.shape[-2:]):
             raise ValueError('Aligned RGB [B,3,H,W] and metric depth [B,1,H,W] required')
         if not rgb.is_floating_point() or not torch.isfinite(rgb).all() or (rgb<0).any() or (rgb>1).any():
@@ -53,24 +52,20 @@ class CofMPolicy(nn.Module):
         f=self.projection(maps[2]);h,w=f.shape[-2:]
         y,x=torch.meshgrid(torch.linspace(-1,1,h,device=f.device),torch.linspace(-1,1,w,device=f.device),indexing='ij')
         tokens=f.flatten(2).transpose(1,2)+self.position(torch.stack((x,y),-1).reshape(1,-1,2))
-        q=goal_ego.new_zeros((rgb.shape[0],1)) if q_m is None else q_m
-        if q.shape != (rgb.shape[0],1) or not torch.isfinite(q).all() or (q.abs()>.1+1e-6).any():
-            raise ValueError('q_m must be [B,1] within [-0.1,0.1]m')
-        goal=self.condition(torch.cat((goal_ego/5,q/.1),-1))[:,None]
+        goal=self.condition(goal_ego/5)[:,None]
         return self.norm(torch.cat((tokens,goal),1))
 
-    def forward(self, query, rgb, depth, goal_ego, valid_mask=None, q_m=None, hfov_rad=None):
-        context=self.encode(rgb,depth,goal_ego,valid_mask,q_m)
-        xy=self.decoder(query,context,hfov_rad=hfov_rad)
-        q=self.shape_head(torch.cat((query,context.mean(1)[:,None].expand(-1,query.shape[1],-1)),-1))
-        return torch.cat((xy,q*.5),-1)  # Configuration tangent; not physical actuator velocity.
+    def forward(self, query, rgb, depth, goal_ego, valid_mask=None, hfov_rad=None):
+        context=self.encode(rgb,depth,goal_ego,valid_mask)
+        return self.decoder(query,context,hfov_rad=hfov_rad)
 
     def save(self,path):
-        torch.save(dict(format='cofm_rgbd_v1',config=asdict(self.config),state_dict=self.state_dict()),path)
+        torch.save(dict(format='cofm_point_rgbd_v2',config=asdict(self.config),state_dict=self.state_dict()),path)
 
     @classmethod
     def load(cls,path):
         data=torch.load(path,map_location='cpu',weights_only=True)
-        if data.get('format')!='cofm_rgbd_v1': raise ValueError('Expected RGB-D CoF-M checkpoint')
+        if data.get('format')!='cofm_point_rgbd_v2':
+            raise ValueError('Expected point-only RGB-D v2 checkpoint; old q checkpoints require retraining')
         model=cls(CofMConfig(**data['config']));model.load_state_dict(data['state_dict'],strict=True)
         return model

@@ -1,6 +1,6 @@
 # 仓库上下文：CoF-M 质点流场与后续端点规划
 
-更新日期：2026-11-18。操作只维护在 [使用手册](cof-m-guide.md)。
+更新日期：2026-11-22。操作只维护在 [使用手册](cof-m-guide.md)。
 以提交 `62577a27492c16c8491e93ab8e85cde70f324692` 为界，新增项目 Markdown
 只保留本文件与使用手册；原提交已有的原版参考与许可证保留。产物说明用 txt/json。
 
@@ -14,7 +14,8 @@
 已从当前网页与采集链路移除，不能继续当作当前任务约定。旧构型算法和历史
 数据仅为保留代码/产物，不参与质点场。后面的硬件约束不意味着已恢复整机场。
 
-当前用户要求优先生成，不运行 DFormer；不能借修改文档或数据生成启动训练。
+2026-11-22 用户明确授权实现 A 路线并运行数据采集、teacher、DFormer 短训练
+与连续性验证；此前暂停 DFormer 的约定在本次实验范围内已被新指令替代。
 主项目命令按已激活 cofl-navigation 使用 python 开头，Habitat 用独立解释器。
 
 ## 2. 当前实现与复用边界
@@ -31,9 +32,13 @@
 | `app/cofm/contracts.py` | 二维 HTTP DTO；path[N,2]、arrows[N,4]，无 q 切片 |
 | `app/cofm/router.py` | HTTP 路由及来源/错误检查；旧随机端点请求不再提供任务 |
 | `app/config.py` | Studio 场景目录及可配置质点净空/分辨率/安全成本 |
-| `experiments/matterport_routes.py` | 手动任务、窄段窗口、真实深度可见性、相机系二维标签 |
+| `experiments/matterport_routes.py` | 固定世界 teacher、可见性只作监督掩码、世界点 ID 与局部标签 |
+| `experiments/cofm_temporal.py` | 连续帧真实 RGB-D、两组训练、严格 A/B 离线重放及诊断可视化 |
+| `training/cofm_temporal.py` | 二维 DFormer 训练、SE(2) 对齐的向量/方向一致性、验证 checkpoint 选择 |
+| `runtime/temporal_field.py` | SE(2) 变换、1s 有效期世界场缓存及有限空间支持 |
+| `planning/endpoint_flow.py` | 等跨度、85–95°双点选择、同步积分、A 参考首步速度接续 |
 | `app/src/modes/CofMPlayground.tsx`（仓库根目录） | 手选点、RGB-D、无 q 的点场和参考路径 |
-| `models/cofm.py`、`models/vendor/dformer.py` | 保留网络原型；仍有旧 q/三输出接口，尚未适配当前任务，未运行 |
+| `models/cofm.py`、`models/vendor/dformer.py` | 官方 DFormer-Tiny RGB-D 核心＋二维场头；已移除 q 和构型输出 |
 | `planning/configuration_field.py` | 停用的整机构型 teacher 和共享基础几何数据类 |
 
 上述 Python 模块路径均以 `src/cofl/` 为前缀，唯独 React 路径为仓库根目录路径。
@@ -41,8 +46,9 @@
 
 复用数值函数不等于重现原 CoFL-S 全套语言 episode/worker：当前场景采用已同意
 的固定楼层平面栅格和手动目标，采集只保留有用窄段窗口。网页全局场的局部
-展示不是深度可见性标签；批量导出时才以真实深度重新构造局部势场和有效标签。
-参考路径来自 Dijkstra 前驱树，不是 COG 附近多个质点的流线积分。后者未实现。
+展示不是深度可见性标签；批量导出时以真实深度筛监督位置，不能再用不可见区域重建势场。
+参考路径来自 Dijkstra 前驱树；A1 原型另外从双点同步积分并接续参考，尚未
+接通真正的机体构型逆运动学、实际 COG 接入和飞行闭环。
 
 ## 3. 数值、参数与坐标
 
@@ -80,9 +86,9 @@ habitat-train-preview/studio.yaml 的第一项是此质点场景，旧带侵蚀�
 但已从该列表撤下。数据和 .habitat/cofm 都是实体目录。catalog 启动时读入，
 变化后重启；新增产物目录不会自动出现在已有 catalog。
 
-导出格式 cofm_point_field_v1 / cofm_point_rgbd_routes_v1，无 q 轴和 Fq；旧
+导出格式 cofm_point_field_v1 / cofm_point_rgbd_routes_v2，无 q 轴和 Fq；旧
 cofm_rgbd_routes_v1 构型数据不能冒充新数据。path.npy[N,2]；field.npz 仅二维
-query/field/terminal。旧 16 帧、60 构型与历史测试报告属于停用方案，不用于
+query/field/terminal/world_xy/world_index。旧 v1 局部标签需重新采集；旧 16 帧、60 构型与历史测试报告属于停用方案，不用于
 宣称当前质点任务已训练或验证完成。
 
 测试入口：test_point_field.py（与原数值核对）、test_cofm_studio.py（墙边质点、
@@ -90,17 +96,73 @@ query/field/terminal。旧 16 帧、60 构型与历史测试报告属于停用�
 reproduce/。旧 test_configuration_field.py 仅验证独立历史构型算法。
 修改 DTO 后导出 OpenAPI，npm run generate:api --prefix app，再 npm run build --prefix app。
 
-## 5. 后续接续顺序
+## 5. A1 实验状态与接续边界
 
-1. 用户确认质点场的可行域、净空及场方向；增加其他自定义参数时明确硬约束/软代价。
-2. 明确 COG 附近质点的选择、流线积分和端点/耦合处理，不擅自重新引入整机膨胀。
-3. 定义学生可观测信息与 teacher 标签边界：单帧不保证辨认遮挡后的全局分支。
-4. 获准恢复模型工作后适配 DFormer 二维输入输出、数据加载、损失、完整 checkpoint。
-5. 仿真闭环通过后再接 AMB 参考与飞控，不能把规范化向量直接当推力或舵机速度。
+用户要求在当前扇面寻找与控制器给出的跨度相等的双点，中点场与连线夹角
+85–95°，同步积分形成 COG/yaw/跨度参考，0.2s 后更新。第一版采用单帧
+DFormer＋成对训练＋规划器短时历史，不先增加视频 encoder 或隐状态网络。
+双点参考保持对称端点身份；不能在变形后擅自把另一对“新最宽端点”交换进来。
+
+每任务固定世界 teacher，各帧以已知相对位姿采样同一场。深度可见性只裁剪
+监督，不把遮挡区改成障碍。相同 world_index 才可施加跨帧损失，向量先旋转
+到同一世界坐标；不能比较扇面图的相同下标。相邻世界位置不是同一物理点。
+采集脚本以 0.25m/s 和 dt=0.2s 连续重采样，每路线 24 帧，平滑 camera yaw
+并扰动。原路线采集 CLI 保持原接口，但输出 v2 标签，不能静默消费旧局部势场。
+
+产物 `artifacts/cof-m/temporal-a-20261122/`：两条路线 48 张真实 Habitat RGB-D，
+38 训练帧、10 验证帧、28 相邻训练对。224×224 RGB-D，d_model=64，DFormer
+随机初始化并全量训练；无下载预训练权重。q 输入和第三分量移除，checkpoint
+为 cofm_point_rgbd_v2；旧 cofm_rgbd_v1 会拒绝并提示重新训练。原 `cofl train`
+仍面向 SigLIP/语言方法，CoF-M 用独立实验 CLI。具体命令和损失见使用手册 §7。
+
+基线与 λ=2 的世界向量 MSE＋世界方向余弦一致性两组各 1200 步，seed=17，
+梯度范数限制 1。每 100 步在验证帧对选择 checkpoint，最佳步 1100/900；
+不能把选 checkpoint 的验证帧称为独立测试集。跨帧向量 RMSE 从 0.122651
+降到 0.069351，方向差 11.80°→7.13°；但相对 teacher 的单帧方向误差
+24.55°→25.08°，没有同步改善。teacher 对齐误差约 1.38e-8。
+
+A 保留世界参考和 1s 场缓存；初始等跨度、当前扇面、85–95°与逐状态点/
+连接线净空约束都保留。0.02s 积分、0.6s 前瞻、0.2s 重规划；旧参考起点和
+首步速度保留，五次权重过渡修正后续轨迹，之后重新检查速率和净空。
+示例跨度 0.82m、最小 0.60m、跨度速率 0.25m/s、yaw 速率 0.8rad/s；均为
+实验值，不能当作现机标定。0.60m 仅参考硬件近似外宽，不是此前随意缩到
+0.25m 的几何测试。真实一自由度耦合和另外两臂未加入。
+
+严格 A 的 teacher/网络分别只通过 5/48、3/48 个帧的参考生成，通过的接续
+位置、yaw、首步速度误差为零；没有全程穿缝。teacher 失败包括最小跨度后
+仍需收缩、旧组合离开当前扇面；网络额外有局部方向跳变及接续约束失败。
+参考耗尽返回 reference_expired，不能悄悄放松条件或重选大跳变组合。
+B 在每帧重新选择，teacher/网络为 25/48、36/48，但不保证跨帧连续。
+
+这是固定相机轨迹重放和理想跨度反馈，非跟随网络 COG 的 Habitat 闭环，更
+非 AMB 飞行。净空还依赖 oracle 地图，点/连接线不等于完整机体。前方虚拟
+截面与实际 COG 的连接、端点逆运动学和真实飞控接口仍待设计，不能瞬移到
+前方截面；点路径经过 65cm 窄口不证明 82cm 机体穿越成功。
+
+后续应先解决三项独立问题：最小跨度边界如何继续前进、A 是否允许继续
+跟踪历史覆盖但已离开当前扇面的组合、当前真实机体到前瞻截面的可执行
+接入。不能借“训练更久”掩盖 teacher 在原始严格规则下已失败的事实。
 
 DFormer 核心来自 VCIP-RGBD/DFormer 的固定提交 e3273009b759b578945483828ff315d560be94c9，
-MIT 全文保留于 vendor 并登记于 THIRD_PARTY_NOTICES.md。原型不自动下载预训练权重。
-原训练 CLI 仍是 SigLIP/语言 CoFL/CoFL-S，不支持上述 CoF-M 新数据。
+MIT 全文保留于 vendor 并登记于 THIRD_PARTY_NOTICES.md。
+
+## 6. A1 长时续训状态（2026-11-22）
+
+用户授权先测 epoch 时间，再运行约 8h。`experiments/cofm_long_train.py`
+复用 `training/cofm_temporal.py` 的同一个 training_step，epoch 为无放回
+遍历 28 个训练对。RTX 5080 六轮短跑中位 0.629s/epoch，另需约 0.111s 验证；
+设置 46,000 epoch、8h 累计运行双重上限，验证间隔 95 epoch、断点间隔 300s。
+已完成 CUDA 真实恢复测试（168→196 step），保存模型、优化器、调度器、
+Torch/CUDA/NumPy RNG 和 epoch 游标；同 output 有进程锁，文件用原子替换。
+
+本次后台实验根 `artifacts/cof-m/temporal-a-8h-20261122/`，`launcher.json`
+记录 PID/命令，`run/status.json` 为运行事实来源，不能根据静态文档判断
+是否仍在运行。首次从此前验证最优权重续训，旧 optimizer 不存在，故新建
+AdamW lr=1e-4；平台验证停滞降 lr，最低 1e-6，保持同一 38/10 帧划分。
+当前仍为单场景训练，不增加泛化宣称，也不修改严格双点可行条件。
+每 30min 写完整流场指标，退出时写 evaluation-final.json、A/B 参考和可视化。
+后台训练不会自动触发后续助手回复；完成结果应读取产物，不能预先宣称改善。
+操作、恢复与查看命令统一见使用手册 §8。
 
 ## 9. 硬件约束与代理边界
 

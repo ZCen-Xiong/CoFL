@@ -1,6 +1,6 @@
 # CoF-M 使用手册：配置、生成、训练与部署
 
-更新日期：2026-11-18。本手册是用户操作入口；实现与硬件资料见
+更新日期：2026-11-22。本手册是用户操作入口；实现与硬件资料见
 [仓库上下文](repository-context.md)。所有命令从仓库根目录执行，默认已激活
 `cofl-navigation`，因此使用 `python`。Habitat 使用独立解释器。
 
@@ -11,15 +11,16 @@
 低相机高度，以及可配置的墙面净空（默认 0.02m）。
 
 不在生成质点场时按整机十字膨胀障碍，不使用 q 切片或 Fq。之后从 COG 附近
-质点取流线、形成端点规划和耦合控制，是后续阶段，当前尚未实现。
+质点取流线、形成端点参考已有 A1 离线原型；真实机构耦合控制和飞行闭环尚未实现。
 
 | 阶段 | 状态 |
 | --- | --- |
 | MP3D 楼层导入、低高度 RGB-D | 已实现 |
 | 手动选点、CoFL-S 数值算法生成质点场 | 已实现 |
 | 窄段筛选、RGB-D 与二维局部标签导出 | 已实现 |
-| COG 附近多质点流线与端点耦合规划 | 尚未接通 |
-| DFormer 训练、在线策略与真机部署 | 尚未接通；按要求暂停模型运行 |
+| 扇面双点选择、积分和 A1 参考接续 | 离线原型已实现；严格条件下未全程通过 |
+| DFormer 二维场训练与跨帧评估 | 已完成真实 RGB-D 小样本实验；非部署模型 |
+| AMB 控制器、ROS 与真实飞行 | 未接通 |
 
 ## 2. 配置与重新导入场景
 
@@ -153,7 +154,7 @@ python -m cofl.experiments.matterport_routes \
 只贴一面墙不算双侧窄通道。检查 `dataset.json` 的 accepted/rejected。
 相机默认沿参考路径取景，`--camera-heading fixed` 可固定朝 +X。
 
-输出格式为 `cofm_point_rgbd_routes_v1`：
+输出格式为 `cofm_point_rgbd_routes_v2`；旧 v1 标签需要重新采集：
 
 ```text
 dataset.json
@@ -164,12 +165,13 @@ route-0000/poses.json                  # state_xy、goal_ego、heading_rad、Hab
 route-0000/000000-rgb.png               # uint8 [240,320,3]
 route-0000/000000-depth.npy             # float32 米制光轴 Z 深度，无效为 0
 route-0000/000000-valid.npy             # bool 有效深度
-route-0000/000000-field.npz             # query[N,2]、field[N,2]、terminal[N]
+route-0000/000000-field.npz             # query[N,2]、field[N,2]、terminal[N]、world_xy、world_index
 ```
 
 RGB-D 对齐，水平 FOV 90°，裁剪范围 0.05–15m。局部 query 为
-`[theta/(pi/4), range_m/5]`。局部标签复用 CoFL-S 的深度可见性、势函数、
-平滑及场幅值函数，XY 向量和目标转到相机前/左坐标。
+`[theta/(pi/4), range_m/5]`。每个任务只生成一次世界流场；各帧读取同一
+field，XY 向量和目标转到相机前/左坐标。深度可见性仅控制监督掩码，不再把
+不可见区域当障碍重建势场；否则同一世界位置会随视角改变标签。
 非终点幅值为同一目标根前驱树上的剩余几何距离 / 5，不是单位方向，也不是
 飞控的物理速度。不可达与 terminal 分开。
 
@@ -183,7 +185,7 @@ RGB-D 对齐，水平 FOV 90°，裁剪范围 0.05–15m。局部 query 为
  → 目标根 Dijkstra（代价距离与同树几何距离）
  → 势函数、梯度与平滑
  → 二维向量场 F(x,y)
- → 之后再做 COG 附近质点流线与端点规划（待实现）
+ → 当前扇面选双点、积分、参考接续（A1 离线原型）
 ```
 
 当前仍采用此前同意的 MP3D 地面占据平面近似；完整三维障碍、飞行器厚度、
@@ -191,10 +193,10 @@ RGB-D 对齐，水平 FOV 90°，裁剪范围 0.05–15m。局部 query 为
 单帧 RGB-D 不一定能唯一推断全局最优分支。
 
 `cofl train` 目前仍只支持原版 CoFL/CoFL-S，不能直接读取上述实验数据。
-DFormer 原型仍有旧三分量/q 接口，**尚未按本次二维质点任务重新适配，也未运行**。
-下一步先接通 COG 多质点流线方案，再明确训练数据、条件、二维输出、损失和
-checkpoint；之后才是仿真闭环及 AMB 飞控/ROS 部署。没有可直接运行的 CoF-M
-训练或真机部署命令，不能拿原版语言导航命令代替。
+CoF-M 已有独立实验入口，见第 7 节；没有接入原版语言训练 CLI。DFormer
+输入为 RGB-D、目标 XY，输出二维质点场；q 输入与第三输出已移除。checkpoint
+格式为 `cofm_point_rgbd_v2`，旧 `cofm_rgbd_v1` 构型权重会明确拒绝加载，需重新训练。
+真实 AMB 部署尚未接通，不能把本次离线重放当成飞行闭环。
 
 验证质点场与原 CoFL-S 数值一致、墙边质点可行、净空可配置及局部标签：
 
@@ -221,4 +223,185 @@ python -m cofl app --config artifacts/cof-m/mp3d-gap-065-test/studio.yaml --no-b
 选择质点 teacher 生成操作。已验证路径可达，且直线通过测量横断面。
 `test-task.json` 保存这组点；`teacher-preview.json` 和 `tasks/` 保存预生成结果，
 `map-preview.png` 是地图预览，`rgbd/` 有起点、窄口及终点三个 RGB-D 观测。
-此次未运行 DFormer。
+该窄口导入步骤未运行 DFormer；2026-11-22 的独立训练实验见第 7 节。
+
+
+## 7. A1：连续帧采集、teacher、训练与双端点重放
+
+本次用户已明确授权恢复 DFormer 小样本训练。完整产物在
+`artifacts/cof-m/temporal-a-20261122/`。未下载或使用预训练权重。
+这是同一个 MP3D 场景内的可行性实验，不是已验证的穿缝模型。
+
+### 数据与帧关系
+
+任务由 `configs/experiments/cofm_temporal_tasks.json` 手工指定：一条经过此前
+约 65cm 家具短窄口的点路径，一条带约 90cm 栅格窄段的曲线路径。
+从用户起终点生成 Dijkstra 点路径，以 0.25m/s、每 0.2s 重采样；每条最多
+连续 24 帧，取窄段附近的连续窗口，不通过跳帧伪造 0.2s。相机沿平滑路径
+朝向，并加入连续的小幅 yaw 扰动。真实 Habitat RGB-D 高 0.2m、HFOV 90°。
+共 48 帧。相邻帧是已知 SE(2) 相对位姿的同一任务，目标世界坐标固定，
+`goal_ego` 随相机位姿变化。点路径不是整机可行轨迹。
+
+每任务只求一次固定世界 teacher。各帧标签中的 `world_index` 与 `world_xy`
+标识相同的世界点，`query` 和 `field` 转到该帧相机坐标。可见性只裁剪监督，
+不修改世界几何。深度是光轴 Z，所有二维规划仍采用当前地面占据近似。
+
+### 网络与训练约束
+
+DFormer-Tiny 编码 RGB-D，CoFL-S 查询解码器输出 `[B,N,2]`。网络没有历史
+输入、语言、机身 q 或构型头；历史保存在部署参考和短时场缓存中。
+输入缩放到 224×224，实验解码维度 64，全 encoder 与 decoder 都训练。
+每五帧中索引余 3 的帧留作验证：38 训练帧、10 验证帧、28 个相邻训练对。
+没有让包含验证帧的 pair 参与反向传播；验证帧用于选 checkpoint，因此
+这里的数字是验证集指标，不是独立测试集或新场景泛化。
+
+每次更新取一对相邻训练帧，每帧 512 个查询；256 个为两帧共同可见的相同
+世界点，另 256 个为本帧自由采样。令 `R` 为机体到世界的 yaw 旋转，损失为：
+
+```text
+L = 10*MSE(F_pred, F_teacher) + 0.1*方向余弦误差
+  + λ * [10*MSE(Rt*Ft, Rt1*Ft1) + 0.25*跨帧方向余弦误差]
+```
+
+跨帧项只比较相同世界点，方向项跳过 teacher 零幅值附近；平移用于查询点
+对应，旋转用于向量对齐。不能直接比较两个扇面的同索引箭头。λ=0 为基线，
+λ=2 为 A1 训练。AdamW lr=3e-4、weight_decay=1e-4、梯度范数裁剪 1，固定
+种子 17；两组均训练 1200 步，每 100 步按同类验证目标选 checkpoint。
+验证最优步分别为基线 1100、A1 900。`policy-last.pt` 保留末步，`policy.pt`
+为选出的版本。早期的 300 步和仅向量约束版本单独保留，不能混作最终结果。
+
+### 双点 A 参考与限制
+
+`planning/endpoint_flow.py` 在当前前方扇面内搜索中心和方向，构造跨度严格
+等于控制器输入值的对称双点；示例初始跨度 0.82m。只接受中点场方向与连线
+夹角 85–95°、端点及连接线满足 2cm 栅格净空的候选。中心搜索步长 0.1m，
+方向步长 5°、相对视轴 ±40°，因此失败不代表穷尽搜索后的不可行证明。
+
+两端点用相同积分时间与同一速度缩放推进，dt=0.02s，前瞻最多 0.6s，
+每 0.2s 更新。参考 COG 为中点，跨度为端点距离，yaw 为连线法向；这只适用
+于对称横向端点，不能自动替代真实机构运动学。示例限制：最小跨度 0.60m、
+跨度变化率 0.25m/s、yaw 速率 0.8rad/s、端点速度 0.5m/s，且默认只收缩。
+这些是实验配置，0.60m 仅参考旧硬件资料的近似外宽，均不是现机标定。
+
+A 保留上周期世界坐标参考和 1s 有效期场缓存；新旧场方向差小于 30°才平均，
+否则以当前观测更新，不平均矛盾分支。候选只在旧参考约 2cm/5° 邻域内接续，
+用保留起点和首步速度的五次权重过渡修正后续参考，并重新检查速率、净空、
+垂直条件。没有可行接续就返回失败，旧参考过期后要求显式 reset，不静默
+跳到另一组。B 使用相同几何与速率限制，但每帧独立选点。
+
+本次严格要求每次更新的初始组合仍位于当前扇面。场缓存不能自动豁免此条件；
+离开当前扇面的历史组合会被拒绝。没有实现“最小跨度到达后偏离原流线保持
+宽度”或“放宽当前扇面限制”的策略，避免在验证时偷偷改动用户条件。
+
+### 重现命令与产物
+
+从采集到训练、基线比较和重放的一条命令（使用新的空目录）：
+
+```bash
+python -m cofl.experiments.cofm_temporal \
+  --config artifacts/cof-m/matterport-point-020/studio.yaml \
+  --tasks configs/experiments/cofm_temporal_tasks.json \
+  --output artifacts/cof-m/temporal-a-new \
+  --max-frames 24 --steps 1200 --device cuda \
+  --width 0.82 --min-width 0.60
+```
+
+可用 `--stage collect` 单独采集；随后相同 output 配 `--stage train` 训练。
+重新评估已有产物，不训练：
+
+```bash
+python -m cofl.experiments.cofm_temporal \
+  --stage evaluate --output artifacts/cof-m/temporal-a-20261122 --device cuda
+```
+
+`--width` 与 `--min-width` 可改变跨度；`--allow-expansion` 可关闭单调收缩
+限制。修改这些参数会改变实验条件，应使用新的产物目录或保留原 report。
+产物包括 `report.json`、`baseline/`、`temporal/`、`dataset/`、逐帧
+`teacher_A/trained_A/teacher_B/trained_B-references.json`、`continuity.gif`、
+`continuity-metrics.png`、`preview.png` 与 `feasible-preview.png`。
+
+### 本次实测结论（2026-11-22）
+
+| 验证指标 | 单帧监督基线 | 加跨帧约束 |
+| --- | --- | --- |
+| 跨帧世界向量 RMSE | 0.122651 | 0.069351 |
+| 跨帧方向差均值 | 11.80° | 7.13° |
+| 跨帧方向差 P95 | 36.39° | 20.68° |
+| 单帧方向相对 teacher 误差 | 24.55° | 25.08° |
+| 单帧向量 RMSE | 0.228251 | 0.236489 |
+
+teacher 在相同世界点上的跨帧 RMSE 约 1.38e-8。跨帧训练确实减少抖动，
+但单帧准确率没有改善，局部仍可能出现较大方向跳变；不能把“更稳定”当作
+“已足够准确”。严格 A 重放中，teacher 可生成 5/48 帧可行参考，网络为
+3/48；通过的接续起点、yaw 和首步速度误差均为零，但未全程通过。
+B 的 teacher/网络分别为 25/48、36/48，B 会重新选择，不能据帧数多认定
+实际飞行更可靠，也不能与 A 的连续跟踪成功率混为一谈。
+
+失败分开记录：65cm 任务的 teacher 会到达最小跨度后仍要求继续收缩；曲线
+任务的旧组合会离开当前扇面；网络额外存在垂直角超限、接续或速率限制。
+`reference_expired` 是此前失败后剩余参考耗尽，不是另一种网络误差。
+
+重放采用记录的 COG/相机位姿与理想跨度反馈，不是模拟动力学，也没有让
+飞行器沿网络规划后的 COG 路径重新渲染闭环观测。净空检查还使用真实地图
+作为离线 oracle，只检查双点及连接线，不验证另两条臂、真实单自由度耦合
+或飞控。前方截面与实际 COG 的接入尚未接通；点路径及参考生成成功不能
+证明 82cm 机体已穿过 65cm 窄口。当前可复现结论是 teacher 一致性成立、
+跨帧训练有效、严格双点规则还不能全程运行。
+
+验证本次几何、帧对齐、记忆有效期、接续、二维 checkpoint 和回归：
+
+```bash
+python -m pytest -q reproduce/test_cofm_temporal.py \
+  reproduce/test_matterport_routes.py reproduce/test_point_field.py \
+  reproduce/test_cofm_studio.py reproduce/test_configuration_field.py
+```
+
+
+## 8. 约 8 小时的 A1 续训（2026-11-22 启动）
+
+入口为 `python -m cofl.experiments.cofm_long_train`。一个 epoch 定义为将
+28 个训练帧对随机打乱后完整遍历一次，不放回；每次访问仍重新采样 512 个
+查询。此前短实验按 step 随机抽帧对，不能直接把一个 step 叫作 epoch。
+
+RTX 5080 实测 6 个 epoch，首轮预热后每 epoch 中位约 0.629s，验证另约
+0.111s。预计约 45,697 epoch 对应 8h，因此设置 46,000 epoch 与累计运行
+时间 8h 双重上限，先到者停止训练。恢复进程时累计此前已运行时间，停机
+期间不计入训练时间。基准记录在 `artifacts/cof-m/temporal-a-8h-20261122/benchmark/benchmark.json`。
+
+本次继续使用同一 48 帧数据、38/10 帧划分和 teacher，不扩充或改动验证集。
+从此前 `temporal/policy.pt` 验证最优模型继续，所有 encoder/decoder 都训练。
+旧权重没有优化器状态，因此首次续训新建 AdamW，lr=1e-4、weight_decay=1e-4，
+跨帧权重 2、梯度裁剪 1；验证不改善 10 次后学习率乘 0.5，最低 1e-6。
+不因验证停滞提前结束 8h，但始终保留验证最优模型，避免把末步当最优。
+
+后台输出在 `artifacts/cof-m/temporal-a-8h-20261122/`：
+
+- `launcher.json`：启动 PID、命令和预计结束时间；`console.log`：训练输出。
+- `run/status.json`：当前 epoch、step、运行时间、学习率及最佳验证分数。
+- `run/policy.pt`：验证最优模型；`policy-last.pt`：最近保存的当前模型。
+- `run/resume.pt`：模型、AdamW、学习率调度器、随机状态、epoch 内游标及累计时间。
+- `run/validation.jsonl`：验证历史；每 95 epoch（约 1min）验证一次。
+- `run/metrics-latest.json`、`metrics-history.jsonl`：每约 30min 对最优模型做完整流场评估。
+- 结束后 `run/evaluation-final.json`：完整流场指标和严格 A/B 重放；同时输出 GIF 与曲线。
+
+每 5min 自动原子保存断点，已实际测试 CUDA 上从第 6 epoch/168 step 恢复
+至第 7 epoch/196 step。SIGTERM/SIGINT 会请求在当前更新结束后保存退出。
+不重复启动同一 output，进程锁会拒绝并发运行。重启电脑不会自动恢复。
+
+中断后恢复（原进程已停止时）：
+
+```bash
+python -m cofl.experiments.cofm_long_train \
+  --resume --epochs 46000 --hours 8 --validate-every 95 \
+  --output artifacts/cof-m/temporal-a-8h-20261122/run
+```
+
+读取状态：
+
+```bash
+python -c "import json; print(json.dumps(json.load(open('artifacts/cof-m/temporal-a-8h-20261122/run/status.json')), indent=2))"
+```
+
+同一小场景长时间重复训练可能过拟合。需同时看 teacher 方向误差、跨帧差、
+双点接续和失败原因，不能只凭训练 loss 降低认定能穿缝。长训不会自动解除
+上一节发现的最小跨度、当前扇面限制或真实 COG 接入问题。
